@@ -131,10 +131,10 @@ async function requireValidTokenAndUser(req, res, next) {
 // Add a new grocery item
 app.post("/grocery/:id", requireValidTokenAndUser, async (req, res) => {
     const newItem = req.body;
-    const results = await Grocery.createNew(newItem);
+    console.log("POST request received on grocery route");
+    const results = await Grocery.addNew(newItem);
     res.sendStatus(201);
 
-    console.log("POST request received on grocery route");
     console.log(`New item created with id: ${results.ownerId}`); //does this work?
 });
 
@@ -147,7 +147,7 @@ app.get("/grocery/:id", requireValidTokenAndUser, async (req, res) => {
 });
 
 // Update an existing item's name or quantity
-app.patch("/grocery/:id", requireMatchingAuthorOrNoUser, async (req, res) => {
+app.patch("/grocery/:id", requireValidTokenAndUser, async (req, res) => {
     const itemUpdate = req.body;
     const results = await Grocery.update(req.params.id, itemUpdate);
 
