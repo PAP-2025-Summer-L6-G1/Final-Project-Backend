@@ -34,7 +34,7 @@ class GroceryClass {
   }
   static async update(userId, itemUpdate) {
     try {
-      const result = await Message.updateOne({_id: userId}, itemUpdate);
+      const result = await Grocery.updateOne({_id: userId}, itemUpdate);
       return result;
     }
     catch (e) {
@@ -45,9 +45,9 @@ class GroceryClass {
       }
     }
   }
-  static async delete(messageId) {
+  static async delete(userId, itemId) {
     try {
-      const result = await Message.deleteOne({_id: messageId});
+      const result = await Grocery.deleteOne({ownerId: userId, _id: itemId});
       return result;
     }
     catch (e) {
@@ -57,7 +57,7 @@ class GroceryClass {
   }
   static async get(messageId) {
     try {
-      const result = await Message.findOne({_id: messageId});
+      const result = await Grocery.findOne({_id: messageId});
       return result;
     }
     catch (e) {
