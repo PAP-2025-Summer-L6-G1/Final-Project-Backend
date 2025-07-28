@@ -128,42 +128,62 @@ async function requireValidTokenAndUser(req, res, next) {
 
 //* ********************* Grocery list **************** */
 
-// Add a new grocery item
-app.post("/grocery/:id", requireValidTokenAndUser, async (req, res) => {
+// Add a new grocery item.
+// Body json:
+// {
+//     "ownerId": String,
+//     "name": String,
+//     "quantity": Number,
+//     "category": String,
+//     "isBought": Boolean
+// }
+app.post("/grocery/", requireValidTokenAndUser, async (req, res) => {
+    // console.log("PRINTING REQ BODY:", req.body);
     const newItem = req.body;
-    console.log("POST request received on grocery route");
-    const results = await Grocery.addNew(newItem);
+    const results = await Grocery.addOrUpdateItem(newItem);
     res.sendStatus(201);
-
-    console.log(`New item created with id: ${results.ownerId}`); //does this work?
+    
+    console.log("POST request received on grocery route");
 });
 
-// Get grocery list items
-app.get("/grocery/:id", requireValidTokenAndUser, async (req, res) => {
-    const results = await Grocery.readAll(req.params.id);
+// Get grocery list items from a user
+app.get("/grocery/:userId", requireValidTokenAndUser, async (req, res) => {
+    const results = await Grocery.readAll(req.params.userId);
+    // console.log("PRINTING RESULTS:", results);
     res.send(results); //separation of item categories must be implemented 
 
     console.log("GET request received on grocery page");
 });
 
-// Update an existing item's name or quantity
-app.patch("/grocery/:id", requireValidTokenAndUser, async (req, res) => {
+// Update an existing item's name or quantity.
+// Body json:
+// {
+//     "ownerId": String,
+//     "name": String,
+//     "quantity": Number,
+//     "category": String,
+//     "isBought": Boolean
+// }
+app.patch("/grocery/", requireValidTokenAndUser, async (req, res) => {
     const itemUpdate = req.body;
-    const results = await Grocery.update(req.params.id, itemUpdate);
+    const results = await Grocery.addOrUpdateItem(itemUpdate);
 
     res.sendStatus(200);
 
     console.log("PATCH request received on message route");
-    console.log(`Message with id ${req.params.id} updated`);
 });
 
 // Delete an existing item
-app.delete("/grocery/:id", requireValidTokenAndUser, async (req, res) => {
-    const results = await Message.delete(req.params.id, req.body); //userid, itemid
+// Body json:
+// {
+//     "_id": String
+// }
+app.delete("/grocery/", requireValidTokenAndUser, async (req, res) => {
+    const results = await Grocery.delete(req.body);
     res.sendStatus(200);
 
     console.log("DELETE request received on message route");
-    console.log(`User ${req.params.id}'s item with id ${req.body} deleted`);
+    // console.log(`User ${req.params.id}'s item with id ${req.body} deleted`);
 });
 
 //* ********************* Launching the server **************** */
@@ -171,7 +191,15 @@ app.delete("/grocery/:id", requireValidTokenAndUser, async (req, res) => {
 const start = async () => {
     try {
         await connectMongoose();
-        app.listen(port, () => console.log(`Server running on port ${port}...`));
+        // app.listen(port, () => console.log(`Server running on port ${port}...`));
+        
+        const httpsOptions = {
+            key: fs.readFileSync(path.resolve(__dirname, '../localhost-key.pem')),
+            cert: fs.readFileSync(path.resolve(__dirname, '../localhost.pem'))
+        };
+        https.createServer(httpsOptions, app).listen(port, () => {
+            console.log(`Express API server running on https://localhost:${port}`);
+        });
     }
     catch (err) {
         console.error(err);

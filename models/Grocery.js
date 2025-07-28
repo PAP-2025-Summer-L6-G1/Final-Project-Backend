@@ -11,10 +11,14 @@ const grocerySchema = new Schema({ //one grocery item
 });
 
 class GroceryClass {
-  static async addNew(item) {
+  static async addOrUpdateItem(item) {
     try {
-      const newItem = await Grocery.create(item);
-      return newItem;
+      //UPSERT: replace item if it exists, otherwise add new
+      return await Grocery.findOneAndUpdate(
+        { ownerId: item.ownerId, name: item.name },
+        { $set: item },
+        { new: true, upsert: true }
+      );
     }
     catch (e) {
       console.error(e);
@@ -32,22 +36,22 @@ class GroceryClass {
       return [];
     }
   }
-  static async update(userId, itemUpdate) {
+  // static async update(itemUpdate) {
+  //   try {
+  //     const result = await Grocery.updateOne({ownerId: itemUpdate.ownerId, _id: itemUpdate._id}, itemUpdate);
+  //     return result;
+  //   }
+  //   catch (e) {
+  //     console.error(e);
+  //     return {
+  //       modifiedCount: 0,
+  //       acknowledged: false
+  //     }
+  //   }
+  // }
+  static async delete(item) {
     try {
-      const result = await Grocery.updateOne({_id: userId}, itemUpdate);
-      return result;
-    }
-    catch (e) {
-      console.error(e);
-      return {
-        modifiedCount: 0,
-        acknowledged: false
-      }
-    }
-  }
-  static async delete(userId, itemId) {
-    try {
-      const result = await Grocery.deleteOne({ownerId: userId, _id: itemId});
+      const result = await Grocery.deleteOne({_id: item._id});
       return result;
     }
     catch (e) {
