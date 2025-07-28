@@ -13,7 +13,7 @@ const port = process.env.PORT || 3002;
 const bcrypt = require("bcrypt");
 const { connectMongoose } = require("./connect");
 const User = require("./models/User");
-const GroceryList = require("./models/GroceryList");
+const Grocery = require("./models/Grocery");
 
 app.use(
     cors({
@@ -72,9 +72,9 @@ app.post("/login", async (req, res) => {
             function (err, result) {
                 if (!(err instanceof Error) && result) {
                     const token = jwt.sign(
-                        { username: user.username },
+                        { username: user.username, userId: existingUser._id},
                         process.env.JWT_SECRET, //
-                        { expiresIn: "7d" }
+                        { expiresIn: "7d" },
                     );
                     res.cookie("token", token, {
                         httpOnly: true,
@@ -104,19 +104,22 @@ app.post("/logout", (req, res) => {
 
 //* ********************* Middleware authorizers **************** */
 
-//maybe?
-async function requireValidToken(req, res, next) {
-    if (req.params.secret === "true") {
-        const token = req.cookies.token;
-        if (!token) {
-            res.status(403).json([]); // Forbidden if no token is found
-        }
-        jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-            if (err) {
-                res.status(403).json([]); // Forbidden if token is invalid
-            }
-        });
-    }
+// Checks for valid token? and correct UserId. is the id the same they wanna search for
+async function requireValidTokenAndUser(req, res, next) {
+    //TODO
+    // const token = req.cookies.token;
+    // if (token) {
+    //     jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    //         if (err || decoded.username !== req.body.user) {
+    //             res.status(403).json([]); // Forbidden if token is invalid
+    //         }
+    //     });
+    // } else {
+    //     const userExists = await User.exists(req.body.user);
+    //     if (userExists) {
+    //         res.status(403).json([]); // Forbidden if user exists and token not provided
+    //     }
+    // }
 
     if (res.statusCode !== 403) {
         next();
@@ -125,12 +128,42 @@ async function requireValidToken(req, res, next) {
 
 //* ********************* Grocery list **************** */
 
-//show grocery list items
-app.get("/grocery/:id", requireValidToken, async (req, res) => {
-    const results = await Message.readAll(req.params.secret);
-    res.send(results);
+// Add a new grocery item
+app.post("/grocery/:id", requireValidTokenAndUser, async (req, res) => {
+    const newItem = req.body;
+    const results = await Grocery.createNew(newItem);
+    res.sendStatus(201);
+
+    console.log("POST request received on grocery route");
+    console.log(`New item created with id: ${results.ownerId}`); //does this work?
+});
+
+// Get grocery list items
+app.get("/grocery/:id", requireValidTokenAndUser, async (req, res) => {
+    const results = await Grocery.readAll(req.params.id);
+    res.send(results); //separation of item categories must be implemented 
 
     console.log("GET request received on grocery page");
+});
+
+// Update an existing item's name or quantity
+app.patch("/grocery/:id", requireMatchingAuthorOrNoUser, async (req, res) => {
+    const itemUpdate = req.body;
+    const results = await Grocery.update(req.params.id, itemUpdate);
+
+    res.sendStatus(200);
+
+    console.log("PATCH request received on message route");
+    console.log(`Message with id ${req.params.id} updated`);
+});
+
+// Delete an existing item
+app.delete("/grocery/:id", requireValidTokenAndUser, async (req, res) => {
+    const results = await Message.delete(req.params.id, req.body); //userid, itemid
+    res.sendStatus(200);
+
+    console.log("DELETE request received on message route");
+    console.log(`User ${req.params.id}'s item with id ${req.body} deleted`);
 });
 
 //* ********************* Launching the server **************** */

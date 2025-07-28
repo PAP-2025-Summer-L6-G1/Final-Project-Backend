@@ -2,32 +2,29 @@ const { connectMongoose } = require('../connect');
 const collectionName = process.env.DB_COLL_NAME;
 const { Schema, model } = require('mongoose');
 
-const grocerySchema = new Schema({
-  message: String,
-  user: String,
-  date: Date,
-  secret: Boolean
+const grocerySchema = new Schema({ //one grocery item
+  ownerId: String,
+  name: String,
+  quantity: Number,
+  category: String,
+  isBought: Boolean
 });
 
-class MessageClass {
-  static async createNew(message) {
+class GroceryClass {
+  static async addNew(item) {
     try {
-      const newMessage = await Message.create(message);
-      return newMessage;
+      const newItem = await Grocery.create(item);
+      return newItem;
     }
     catch (e) {
       console.error(e);
       return {_id: -1}
     }
   }
-  static async readAll(isSecret) {
+  static async readAll(userId) { //we dont need a param bc the mediator checks for valid token
     try {
-      if (isSecret == "true" || isSecret == true) {
-          isSecret = true;
-      } else if (isSecret == "false" || isSecret == false) {
-          isSecret = false;
-      }
-      const results = await Message.find({secret: isSecret}).sort({date:-1}).exec();
+      const results = await Grocery.find({ownerId: userId}).sort({category:1}).exec();
+      //make results lists of dairy,meat,grain?
       return results;
     }
     catch (e) {
@@ -35,9 +32,9 @@ class MessageClass {
       return [];
     }
   }
-  static async update(messageId, messageUpdate) {
+  static async update(userId, itemUpdate) {
     try {
-      const result = await Message.updateOne({_id: messageId}, messageUpdate);
+      const result = await Message.updateOne({_id: userId}, itemUpdate);
       return result;
     }
     catch (e) {
@@ -70,6 +67,6 @@ class MessageClass {
   }
 }
 
-messageSchema.loadClass(MessageClass);
-const Message = model('Message', messageSchema, collectionName);
-module.exports = Message;
+grocerySchema.loadClass(GroceryClass);
+const Grocery = model('Grocery', grocerySchema, collectionName);
+module.exports = Grocery;
