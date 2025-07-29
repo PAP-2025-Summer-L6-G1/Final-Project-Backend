@@ -17,7 +17,7 @@ const Grocery = require("./models/Grocery");
 
 app.use(
     cors({
-        origin: ["https://localhost:3002"],
+        origin: ["https://localhost:5173"],
         credentials: true,
     })
 );
