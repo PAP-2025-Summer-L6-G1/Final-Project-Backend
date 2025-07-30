@@ -1,5 +1,5 @@
 const { connectMongoose } = require('../connect');
-const collectionName = process.env.DB_COLL_NAME;
+const collectionName = process.env.DB_COLL_BUDGETS;
 const { Schema, model } = require('mongoose');
 
 const budgetSchema = new Schema({ //one budget item
