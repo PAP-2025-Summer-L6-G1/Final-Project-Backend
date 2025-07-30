@@ -7,7 +7,7 @@ const budgetSchema = new Schema({ //one budget item
     name: String,
     price: String,
     date: Date,
-    categoryID: Number
+    category: String
 });
 
 class BudgetClass {
