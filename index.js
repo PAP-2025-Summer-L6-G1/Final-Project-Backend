@@ -14,6 +14,7 @@ const bcrypt = require("bcrypt");
 const { connectMongoose } = require("./connect");
 const User = require("./models/User");
 const Grocery = require("./models/Grocery");
+const Budget = require("./models/Budget")
 
 app.use(
     cors({
@@ -180,6 +181,65 @@ app.patch("/grocery/", requireValidTokenAndUser, async (req, res) => {
 // }
 app.delete("/grocery/", requireValidTokenAndUser, async (req, res) => {
     const results = await Grocery.delete(req.body);
+    res.sendStatus(200);
+
+    console.log("DELETE request received on message route");
+    // console.log(`User ${req.params.id}'s item with id ${req.body} deleted`);
+});
+//* ********************* Budget Tracker **************** */
+
+// Add a new grocery item.
+// Body json:
+// {
+//     "ownerId": String,
+//     "name": String,
+//     "price": String,
+//     "date": Date,
+//     "category": String
+// }
+app.post("/budget/", requireValidTokenAndUser, async (req, res) => {
+    // console.log("PRINTING REQ BODY:", req.body);
+    const newItem = req.body;
+    const results = await Budget.addOrUpdateItem(newItem);
+    res.sendStatus(201);
+    
+    console.log("POST request received on grocery route");
+});
+
+// Get grocery list items from a user
+app.get("/budget/:userId", requireValidTokenAndUser, async (req, res) => {
+    const results = await Budget.readAll(req.params.userId);
+    // console.log("PRINTING RESULTS:", results);
+    res.send(results); //separation of item categories must be implemented 
+
+    console.log("GET request received on grocery page");
+});
+
+// Update an existing item's name or quantity.
+// Body json:
+// {
+//     "ownerId": String,
+//     "name": String,
+//     "price": String,
+//     "date": Date,
+//     "category": String
+// }
+app.patch("/budget/", requireValidTokenAndUser, async (req, res) => {
+    const itemUpdate = req.body;
+    const results = await Budget.addOrUpdateItem(itemUpdate);
+
+    res.sendStatus(200);
+
+    console.log("PATCH request received on message route");
+});
+
+// Delete an existing item
+// Body json:
+// {
+//     "_id": String
+// }
+app.delete("/budget/", requireValidTokenAndUser, async (req, res) => {
+    const results = await Budget.delete(req.body);
     res.sendStatus(200);
 
     console.log("DELETE request received on message route");
