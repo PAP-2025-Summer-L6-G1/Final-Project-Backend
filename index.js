@@ -50,8 +50,7 @@ app.post("/signup", async (req, res) => {
                     sameSite: "None",
                     secure: true,
                 });
-
-                res.sendStatus(201);
+                res.status(201).json({userId: results._id});
             } else {
                 res.sendStatus(500);
             }
@@ -64,7 +63,7 @@ app.post("/signup", async (req, res) => {
 app.post("/login", async (req, res) => {
     console.log("POST request received on login route");
     const user = req.body;
-
+    
     const existingUser = await User.findOne({ username: user.username }).exec();
     if (existingUser !== null) {
         bcrypt.compare(
@@ -82,8 +81,7 @@ app.post("/login", async (req, res) => {
                         sameSite: "None",
                         secure: true,
                     });
-
-                    res.sendStatus(200);
+                    res.status(200).json({userId: existingUser._id});
                 } else {
                     res.sendStatus(401);
                 }
