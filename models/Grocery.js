@@ -7,7 +7,8 @@ const grocerySchema = new Schema({ //one grocery item
   name: String,
   quantity: Number,
   category: String,
-  isBought: Boolean
+  isBought: Boolean,
+  storageType: String
 });
 
 class GroceryClass {

@@ -173,6 +173,21 @@ app.patch("/grocery/", requireValidTokenAndUser, async (req, res) => {
     console.log("PATCH request received on message route");
 });
 
+// Update an existing item with item id req.params.itemId by specified field.
+// Body json:
+// {
+//     fieldName: newVal
+// }
+app.patch("/grocery/:itemId", requireValidTokenAndUser, async (req, res) => {
+    const updateField = req.body;
+
+    const results = await Grocery.findByIdAndUpdate(req.params.itemId, updateField, {new: true});
+
+    res.sendStatus(200);
+
+   console.log(`PATCH request received on grocery itemId ${req.params.itemId} route`);
+});
+
 // Delete an existing item
 // Body json:
 // {
