@@ -201,16 +201,16 @@ app.post("/budget/", requireValidTokenAndUser, async (req, res) => {
     const results = await Budget.addOrUpdateItem(newItem);
     res.sendStatus(201);
     
-    console.log("POST request received on grocery route");
+    console.log("POST request received on budget route");
 });
 
-// Get grocery list items from a user
+// Get budget items from a user
 app.get("/budget/:userId", requireValidTokenAndUser, async (req, res) => {
     const results = await Budget.readAll(req.params.userId);
     // console.log("PRINTING RESULTS:", results);
     res.send(results); //separation of item categories must be implemented 
 
-    console.log("GET request received on grocery page");
+    console.log("GET request received on budget page");
 });
 
 // Update an existing item's name or quantity.
@@ -228,7 +228,7 @@ app.patch("/budget/", requireValidTokenAndUser, async (req, res) => {
 
     res.sendStatus(200);
 
-    console.log("PATCH request received on message route");
+    console.log("PATCH request received on budget route");
 });
 
 // Delete an existing item
@@ -240,7 +240,7 @@ app.delete("/budget/", requireValidTokenAndUser, async (req, res) => {
     const results = await Budget.delete(req.body);
     res.sendStatus(200);
 
-    console.log("DELETE request received on message route");
+    console.log("DELETE request received on budget route");
     // console.log(`User ${req.params.id}'s item with id ${req.body} deleted`);
 });
 
