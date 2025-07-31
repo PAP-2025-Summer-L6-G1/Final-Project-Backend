@@ -186,6 +186,33 @@ app.delete("/grocery/", requireValidTokenAndUser, async (req, res) => {
     // console.log(`User ${req.params.id}'s item with id ${req.body} deleted`);
 });
 
+//* ********************* Storage Operations **************** */
+
+// Get grocery list items from a user
+
+
+app.get("/storage/:userId", /*requireValidTokenAndUser,*/ async (req, res) => {
+    //const storageType = req.query.storageType || "bag"; 
+    //const results = await Grocery.readType(req.params.userId, storageType, true);
+    const results = await Grocery.readAll(req.params.userId);
+    console.log("PRINTING RESULTS:", results);
+    res.send(results); //separation of item categories must be implemented 
+
+    console.log("GET request received on grocery page");
+});
+
+app.patch("/storage/", requireValidTokenAndUser, async (req, res) => {
+    const itemUpdate = req.body;
+    const results = await Grocery.addOrUpdateItem(itemUpdate);
+
+    res.sendStatus(200);
+
+    console.log("PATCH request received on message route");
+});
+
+//* ********************* Storage Operations **************** */
+
+
 //* ********************* Launching the server **************** */
 
 const start = async () => {

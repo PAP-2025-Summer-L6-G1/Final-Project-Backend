@@ -15,7 +15,7 @@ class GroceryClass {
     try {
       //UPSERT: replace item if it exists, otherwise add new
       return await Grocery.findOneAndUpdate(
-        { ownerId: item.ownerId, name: item.name },
+        { ownerId: item.ownerId, name: item.name, storageType: item.storageType },
         { $set: item },
         { new: true, upsert: true }
       );
@@ -25,9 +25,26 @@ class GroceryClass {
       return {_id: -1}
     }
   }
+
+  //This should be subbed by readType. If this is for the grocerylist, make your find by userId, set type to "bag" and isBought to false.
   static async readAll(userId) { //we dont need a param bc the mediator checks for valid token
     try {
       const results = await Grocery.find({ownerId: userId}).sort({category:1}).exec();
+      //make results lists of dairy,meat,grain?
+      return results;
+    }
+    catch (e) {
+      console.error(e);
+      return [];
+    }
+  }
+
+   static async readType(userId, type, isBought) { //This is for the storage page, if you want to make modifications, let Nick know
+    try {
+      console.log("type:", type);
+      console.log("isBought:", isBought);
+      console.log("userId:", userId);
+      const results = await Grocery.find({ownerId: userId, storageType: type, isBought: isBought}).sort({category:1}).exec();
       //make results lists of dairy,meat,grain?
       return results;
     }
