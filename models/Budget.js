@@ -5,7 +5,7 @@ const { Schema, model } = require('mongoose');
 const budgetSchema = new Schema({ //one budget item
     ownerId: String,
     name: String,
-    price: String,
+    price: Number,
     date: Date,
     category: String
 });
