@@ -138,19 +138,7 @@ async function requireValidTokenAndUser(req, res, next) {
 // }
 app.post("/grocery/", requireValidTokenAndUser, async (req, res) => {
     // console.log("PRINTING REQ BODY:", req.body);
-// Add a new grocery item.
-// Body json:
-// {
-//     "ownerId": String,
-//     "name": String,
-//     "quantity": Number,
-//     "category": String,
-//     "isBought": Boolean
-// }
-app.post("/grocery/", requireValidTokenAndUser, async (req, res) => {
-    // console.log("PRINTING REQ BODY:", req.body);
     const newItem = req.body;
-    const results = await Grocery.addOrUpdateItem(newItem);
     const results = await Grocery.addOrUpdateItem(newItem);
     res.sendStatus(201);
     
@@ -158,10 +146,6 @@ app.post("/grocery/", requireValidTokenAndUser, async (req, res) => {
     console.log("POST request received on grocery route");
 });
 
-// Get grocery list items from a user
-app.get("/grocery/:userId", requireValidTokenAndUser, async (req, res) => {
-    const results = await Grocery.readAll(req.params.userId);
-    // console.log("PRINTING RESULTS:", results);
 // Get grocery list items from a user
 app.get("/grocery/:userId", requireValidTokenAndUser, async (req, res) => {
     const results = await Grocery.readAll(req.params.userId);
@@ -181,18 +165,7 @@ app.get("/grocery/:userId", requireValidTokenAndUser, async (req, res) => {
 //     "isBought": Boolean
 // }
 app.patch("/grocery/", requireValidTokenAndUser, async (req, res) => {
-// Update an existing item's name or quantity.
-// Body json:
-// {
-//     "ownerId": String,
-//     "name": String,
-//     "quantity": Number,
-//     "category": String,
-//     "isBought": Boolean
-// }
-app.patch("/grocery/", requireValidTokenAndUser, async (req, res) => {
     const itemUpdate = req.body;
-    const results = await Grocery.addOrUpdateItem(itemUpdate);
     const results = await Grocery.addOrUpdateItem(itemUpdate);
 
     res.sendStatus(200);
@@ -201,12 +174,6 @@ app.patch("/grocery/", requireValidTokenAndUser, async (req, res) => {
 });
 
 // Delete an existing item
-// Body json:
-// {
-//     "_id": String
-// }
-app.delete("/grocery/", requireValidTokenAndUser, async (req, res) => {
-    const results = await Grocery.delete(req.body);
 // Body json:
 // {
 //     "_id": String
