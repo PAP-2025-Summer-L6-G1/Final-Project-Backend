@@ -14,6 +14,7 @@ const bcrypt = require("bcrypt");
 const { connectMongoose } = require("./connect");
 const User = require("./models/User");
 const Grocery = require("./models/Grocery");
+const Budget = require("./models/Budget")
 
 app.use(
     cors({
@@ -49,8 +50,7 @@ app.post("/signup", async (req, res) => {
                     sameSite: "None",
                     secure: true,
                 });
-
-                res.sendStatus(201);
+                res.status(201).json({userId: results._id});
             } else {
                 res.sendStatus(500);
             }
@@ -63,7 +63,7 @@ app.post("/signup", async (req, res) => {
 app.post("/login", async (req, res) => {
     console.log("POST request received on login route");
     const user = req.body;
-
+    
     const existingUser = await User.findOne({ username: user.username }).exec();
     if (existingUser !== null) {
         bcrypt.compare(
@@ -81,8 +81,7 @@ app.post("/login", async (req, res) => {
                         sameSite: "None",
                         secure: true,
                     });
-
-                    res.sendStatus(200);
+                    res.status(200).json({userId: existingUser._id});
                 } else {
                     res.sendStatus(401);
                 }
@@ -139,13 +138,30 @@ async function requireValidTokenAndUser(req, res, next) {
 // }
 app.post("/grocery/", requireValidTokenAndUser, async (req, res) => {
     // console.log("PRINTING REQ BODY:", req.body);
+// Add a new grocery item.
+// Body json:
+// {
+//     "ownerId": String,
+//     "name": String,
+//     "quantity": Number,
+//     "category": String,
+//     "isBought": Boolean
+// }
+app.post("/grocery/", requireValidTokenAndUser, async (req, res) => {
+    // console.log("PRINTING REQ BODY:", req.body);
     const newItem = req.body;
     const results = await Grocery.addOrUpdateItem(newItem);
+    const results = await Grocery.addOrUpdateItem(newItem);
     res.sendStatus(201);
+    
     
     console.log("POST request received on grocery route");
 });
 
+// Get grocery list items from a user
+app.get("/grocery/:userId", requireValidTokenAndUser, async (req, res) => {
+    const results = await Grocery.readAll(req.params.userId);
+    // console.log("PRINTING RESULTS:", results);
 // Get grocery list items from a user
 app.get("/grocery/:userId", requireValidTokenAndUser, async (req, res) => {
     const results = await Grocery.readAll(req.params.userId);
@@ -165,7 +181,18 @@ app.get("/grocery/:userId", requireValidTokenAndUser, async (req, res) => {
 //     "isBought": Boolean
 // }
 app.patch("/grocery/", requireValidTokenAndUser, async (req, res) => {
+// Update an existing item's name or quantity.
+// Body json:
+// {
+//     "ownerId": String,
+//     "name": String,
+//     "quantity": Number,
+//     "category": String,
+//     "isBought": Boolean
+// }
+app.patch("/grocery/", requireValidTokenAndUser, async (req, res) => {
     const itemUpdate = req.body;
+    const results = await Grocery.addOrUpdateItem(itemUpdate);
     const results = await Grocery.addOrUpdateItem(itemUpdate);
 
     res.sendStatus(200);
@@ -180,10 +207,75 @@ app.patch("/grocery/", requireValidTokenAndUser, async (req, res) => {
 // }
 app.delete("/grocery/", requireValidTokenAndUser, async (req, res) => {
     const results = await Grocery.delete(req.body);
+// Body json:
+// {
+//     "_id": String
+// }
+app.delete("/grocery/", requireValidTokenAndUser, async (req, res) => {
+    const results = await Grocery.delete(req.body);
     res.sendStatus(200);
 
     console.log("DELETE request received on message route");
     // console.log(`User ${req.params.id}'s item with id ${req.body} deleted`);
+});
+//* ********************* Budget Tracker **************** */
+
+// Add a new grocery item.
+// Body json:
+// {
+//     "ownerId": String,
+//     "name": String,
+//     "price": String,
+//     "date": Date,
+//     "category": String
+// }
+app.post("/budget/", requireValidTokenAndUser, async (req, res) => {
+    // console.log("PRINTING REQ BODY:", req.body);
+    const newItem = req.body;
+    const results = await Budget.addOrUpdateItem(newItem);
+    res.sendStatus(201);
+    
+    console.log("POST request received on budget route");
+});
+
+// Get budget items from a user
+app.get("/budget/:userId", requireValidTokenAndUser, async (req, res) => {
+    const results = await Budget.readAll(req.params.userId);
+    // console.log("PRINTING RESULTS:", results);
+    res.send(results); //separation of item categories must be implemented 
+
+    console.log("GET request received on budget page");
+});
+
+// Update an existing item's name or quantity.
+// Body json:
+// {
+//     "ownerId": String,
+//     "name": String,
+//     "price": String,
+//     "date": Date,
+//     "category": String
+// }
+app.patch("/budget/", requireValidTokenAndUser, async (req, res) => {
+    const itemUpdate = req.body;
+    const results = await Budget.addOrUpdateItem(itemUpdate);
+
+    res.sendStatus(200);
+
+    console.log("PATCH request received on budget route");
+});
+
+// Delete an existing item
+// Body json:
+// {
+//     "_id": String
+// }
+app.delete("/budget/", requireValidTokenAndUser, async (req, res) => {
+    const results = await Budget.delete(req.body);
+    res.sendStatus(200);
+
+    console.log("DELETE request received on budget route");
+    // // console.log(`User ${req.params.id}'s item with id ${req.body} deleted`);
 });
 
 //* ********************* Storage Operations **************** */

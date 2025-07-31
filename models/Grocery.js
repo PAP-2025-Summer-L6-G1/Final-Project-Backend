@@ -15,7 +15,7 @@ class GroceryClass {
     try {
       //UPSERT: replace item if it exists, otherwise add new
       return await Grocery.findOneAndUpdate(
-        { ownerId: item.ownerId, name: item.name, storageType: item.storageType },
+        { ownerId: item.ownerId, name: item.name },
         { $set: item },
         { new: true, upsert: true }
       );
@@ -78,7 +78,8 @@ class GroceryClass {
   }
   static async get(messageId) {
     try {
-      const result = await Grocery.findOne({_id: messageId});
+    
+    const result = await Grocery.findOne({_id: messageId});
       return result;
     }
     catch (e) {
