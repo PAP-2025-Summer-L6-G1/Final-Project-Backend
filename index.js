@@ -193,20 +193,23 @@ app.delete("/grocery/", requireValidTokenAndUser, async (req, res) => {
 //     "query": String,
 //     "ingreds": List of strings
 // }
-app.get("/recipe/search", async (req, res) => {
+app.post("/recipe/search", async (req, res) => {
     // const token = process.env.ACCESS_TOKEN;
     // if (!token) {
     //     return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
     // }
 
     // prevents undefined
-    const { query = "", ingreds = [] } = req.query;
+    const { query = "", ingreds = [] } = req.body;
 
-    // Join the array into a comma-separated list, trimming just in case
+    // Join the array into a comma-separated list, trimming just in case, because API wants ingreds formated as tomato,cheese
     const includeIngredients = ingreds
         .map(i => i.trim())
         .filter(i => i)       // remove any empty strings
         .join(",");
+
+    console.log("QUERY:::::::", query)//
+    console.log("INGREDS:::::::", ingreds)//
 
     // Build URL params with URLSearchParams for safe encoding
     const params = new URLSearchParams({
@@ -255,7 +258,7 @@ app.post('/recipe/search/', async (req, res) => {
     }
 })
 
-// Delete a recipe
+// Delete a saved recipe
 app.get('/recipe/search/', async (req, res) => {
     const zip = req.query.zip;
     // const token = process.env.ACCESS_TOKEN;
