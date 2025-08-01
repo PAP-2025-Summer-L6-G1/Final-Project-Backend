@@ -59,16 +59,16 @@ class GroceryClass {
       return {deletedCount: 0};
     }
   }
-  static async get(messageId) {
-    try {
-      const result = await Grocery.findOne({_id: messageId});
-      return result;
-    }
-    catch (e) {
-      console.error(e);
-      return null;
-    }
-  }
+  // static async get(messageId) {
+  //   try {
+  //     const result = await Grocery.findOne({_id: messageId});
+  //     return result;
+  //   }
+  //   catch (e) {
+  //     console.error(e);
+  //     return null;
+  //   }
+  // }
 }
 
 grocerySchema.loadClass(GroceryClass);

@@ -186,6 +186,129 @@ app.delete("/grocery/", requireValidTokenAndUser, async (req, res) => {
     // console.log(`User ${req.params.id}'s item with id ${req.body} deleted`);
 });
 
+//* ********************* Recipe **************** */
+
+// Search a recipe by keyword and ingredients
+// req body = {
+//     "query": String,
+//     "ingreds": List of strings
+// }
+app.get("/recipe/search", async (req, res) => {
+    // const token = process.env.ACCESS_TOKEN;
+    // if (!token) {
+    //     return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    // }
+
+    // prevents undefined
+    const { query = "", ingreds = [] } = req.query;
+
+    // Join the array into a comma-separated list, trimming just in case
+    const includeIngredients = ingreds
+        .map(i => i.trim())
+        .filter(i => i)       // remove any empty strings
+        .join(",");
+
+    // Build URL params with URLSearchParams for safe encoding
+    const params = new URLSearchParams({
+        apiKey: process.env.SPOONACULAR_KEY,
+        addRecipeInformation: "true",
+        number: "10",
+    });
+    if (query) params.append("query", query);
+    if (includeIngredients) params.append("includeIngredients", includeIngredients);
+
+    const endpoint = `https://api.spoonacular.com/recipes/complexSearch?${params}`;
+
+    try {
+        const resp = await fetch(endpoint);
+        const data = await resp.json();
+        return res.status(resp.status).json(data);
+    } catch (err) {
+        return res.status(502).json({ error: err.message });
+    }
+});
+
+// Save a recipe
+app.post('/recipe/search/', async (req, res) => {
+    const zip = req.query.zip;
+    // const token = process.env.ACCESS_TOKEN;
+    if (!token) {
+        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    }
+
+    const apiUrl =
+        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+
+    try {
+        const resp = await fetch(apiUrl + zip, {
+            headers: {
+                "Accept": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        const data = await resp.json();
+        console.log(data);//
+
+        return res.status(resp.status).json(data);
+    } catch (err) {
+        return res.status(502).json({ error: err.message });
+    }
+})
+
+// Delete a recipe
+app.get('/recipe/search/', async (req, res) => {
+    const zip = req.query.zip;
+    // const token = process.env.ACCESS_TOKEN;
+    if (!token) {
+        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    }
+
+    const apiUrl =
+        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+
+    try {
+        const resp = await fetch(apiUrl + zip, {
+            headers: {
+                "Accept": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        const data = await resp.json();
+        console.log(data);//
+
+        return res.status(resp.status).json(data);
+    } catch (err) {
+        return res.status(502).json({ error: err.message });
+    }
+})
+
+// Show saved recipes
+app.get('/recipe/search/', async (req, res) => {
+    const zip = req.query.zip;
+    // const token = process.env.ACCESS_TOKEN;
+    if (!token) {
+        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    }
+
+    const apiUrl =
+        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+
+    try {
+        const resp = await fetch(apiUrl + zip, {
+            headers: {
+                "Accept": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        const data = await resp.json();
+        console.log(data);//
+
+        return res.status(resp.status).json(data);
+    } catch (err) {
+        return res.status(502).json({ error: err.message });
+    }
+})
+
 //* ********************* Launching the server **************** */
 
 const start = async () => {
