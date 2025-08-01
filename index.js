@@ -193,8 +193,8 @@ app.patch("/grocery/:itemId", requireValidTokenAndUser, async (req, res) => {
 // {
 //     "_id": String
 // }
-app.delete("/grocery/", requireValidTokenAndUser, async (req, res) => {
-    const results = await Grocery.delete(req.body);
+app.delete("/grocery/:itemId", requireValidTokenAndUser, async (req, res) => {
+    const results = await Grocery.delete(req.params.itemId);
     res.sendStatus(200);
 
     console.log("DELETE request received on message route");
