@@ -11,13 +11,11 @@ const budgetSchema = new Schema({ //one budget item
 });
 
 class BudgetClass {
-  static async addOrUpdateItem(item) {
+  static async addItem(item) {
     try {
       //UPSERT: replace item if it exists, otherwise add new
-      return await Budget.findOneAndUpdate(
-        { ownerId: item.ownerId, name: item.name },
-        { $set: item },
-        { new: true, upsert: true }
+      return await Budget.create(
+        { ownerId: item.ownerId, name: item.name, category: item.category, date: item.date, price: item.price },
       );
     }
     catch (e) {
