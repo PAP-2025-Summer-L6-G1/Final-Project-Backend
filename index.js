@@ -287,6 +287,132 @@ app.get("/inventory/", /*requireValidTokenAndUser,*/ async (req, res) => {
 //* ********************* Storage Operations **************** */
 
 
+//* ********************* Recipe **************** */
+
+// Search a recipe by keyword and ingredients
+// req body = {
+//     "query": String,
+//     "ingreds": List of strings
+// }
+app.post("/recipe/search", async (req, res) => {
+    // const token = process.env.ACCESS_TOKEN;
+    // if (!token) {
+    //     return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    // }
+
+    // prevents undefined
+    const { query = "", ingreds = [] } = req.body;
+
+    // Join the array into a comma-separated list, trimming just in case, because API wants ingreds formated as tomato,cheese
+    const includeIngredients = ingreds
+        .map(i => i.trim())
+        .filter(i => i)       // remove any empty strings
+        .join(",");
+
+    console.log("QUERY:::::::", query)//
+    console.log("INGREDS:::::::", ingreds)//
+
+    // Build URL params with URLSearchParams for safe encoding
+    const params = new URLSearchParams({
+        apiKey: process.env.SPOONACULAR_KEY,
+        addRecipeInformation: "true",
+        number: "10",
+    });
+    if (query) params.append("query", query);
+    if (includeIngredients) params.append("includeIngredients", includeIngredients);
+
+    const endpoint = `https://api.spoonacular.com/recipes/complexSearch?${params}`;
+
+    try {
+        const resp = await fetch(endpoint);
+        const data = await resp.json();
+        return res.status(resp.status).json(data);
+    } catch (err) {
+        return res.status(502).json({ error: err.message });
+    }
+});
+
+// Save a recipe
+app.post('/recipe/search/', async (req, res) => {
+    const zip = req.query.zip;
+    // const token = process.env.ACCESS_TOKEN;
+    if (!token) {
+        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    }
+
+    const apiUrl =
+        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+
+    try {
+        const resp = await fetch(apiUrl + zip, {
+            headers: {
+                "Accept": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        const data = await resp.json();
+        console.log(data);//
+
+        return res.status(resp.status).json(data);
+    } catch (err) {
+        return res.status(502).json({ error: err.message });
+    }
+})
+
+// Delete a saved recipe
+app.get('/recipe/search/', async (req, res) => {
+    const zip = req.query.zip;
+    // const token = process.env.ACCESS_TOKEN;
+    if (!token) {
+        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    }
+
+    const apiUrl =
+        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+
+    try {
+        const resp = await fetch(apiUrl + zip, {
+            headers: {
+                "Accept": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        const data = await resp.json();
+        console.log(data);//
+
+        return res.status(resp.status).json(data);
+    } catch (err) {
+        return res.status(502).json({ error: err.message });
+    }
+})
+
+// Show saved recipes
+app.get('/recipe/search/', async (req, res) => {
+    const zip = req.query.zip;
+    // const token = process.env.ACCESS_TOKEN;
+    if (!token) {
+        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    }
+
+    const apiUrl =
+        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+
+    try {
+        const resp = await fetch(apiUrl + zip, {
+            headers: {
+                "Accept": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        const data = await resp.json();
+        console.log(data);//
+
+        return res.status(resp.status).json(data);
+    } catch (err) {
+        return res.status(502).json({ error: err.message });
+    }
+})
+
 //* ********************* Launching the server **************** */
 
 const start = async () => {
