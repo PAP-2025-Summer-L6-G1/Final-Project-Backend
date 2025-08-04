@@ -214,7 +214,7 @@ app.delete("/grocery/:itemId", requireValidTokenAndUser, async (req, res) => {
 app.post("/budget/", requireValidTokenAndUser, async (req, res) => {
     // console.log("PRINTING REQ BODY:", req.body);
     const newItem = req.body;
-    const results = await Budget.addOrUpdateItem(newItem);
+    const results = await Budget.addItem(newItem);
     res.sendStatus(201);
     
     console.log("POST request received on budget route");
@@ -229,23 +229,23 @@ app.get("/budget/:userId", requireValidTokenAndUser, async (req, res) => {
     console.log("GET request received on budget page");
 });
 
-// Update an existing item's name or quantity.
-// Body json:
-// {
-//     "ownerId": String,
-//     "name": String,
-//     "price": String,
-//     "date": Date,
-//     "category": String
-// }
-app.patch("/budget/", requireValidTokenAndUser, async (req, res) => {
-    const itemUpdate = req.body;
-    const results = await Budget.addOrUpdateItem(itemUpdate);
+// // Update an existing item's name or quantity.
+// // Body json:
+// // {
+// //     "ownerId": String,
+// //     "name": String,
+// //     "price": String,
+// //     "date": Date,
+// //     "category": String
+// // }
+// app.patch("/budget/", requireValidTokenAndUser, async (req, res) => {
+//     const itemUpdate = req.body;
+//     const results = await Budget.updateItem(itemUpdate); //does not yet exist
 
-    res.sendStatus(200);
+//     res.sendStatus(200);
 
-    console.log("PATCH request received on budget route");
-});
+//     console.log("PATCH request received on budget route");
+// });
 
 // Delete an existing item
 // Body json:
