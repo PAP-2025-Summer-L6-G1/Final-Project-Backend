@@ -7,7 +7,8 @@ const grocerySchema = new Schema({ //one grocery item
   name: String,
   quantity: Number,
   category: String,
-  isBought: Boolean
+  isBought: Boolean,
+  storageType: String
 });
 
 class GroceryClass {
@@ -78,9 +79,9 @@ class GroceryClass {
   //     }
   //   }
   // }
-  static async delete(item) {
+  static async delete(itemId) {
     try {
-      const result = await Grocery.deleteOne({_id: item._id});
+      const result = await Grocery.deleteOne({_id: itemId});
       return result;
     }
     catch (e) {
