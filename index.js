@@ -12,12 +12,16 @@ const port = process.env.PORT || 3002;
 
 const bcrypt = require("bcrypt");
 const { connectMongoose } = require("./connect");
+const mongoose = require("mongoose");
 const User = require("./models/User");
 const Grocery = require("./models/Grocery");
+const HealthInventory = require("./models/HealthInventory");
+const ExerciseAPI = require("./api/exercises");
+const NutritionAPI = require("./api/nutrition");
 
 app.use(
     cors({
-        origin: ["https://localhost:5173"],
+        origin: ["http://localhost:5173"],
         credentials: true,
     })
 );
@@ -186,20 +190,197 @@ app.delete("/grocery/", requireValidTokenAndUser, async (req, res) => {
     // console.log(`User ${req.params.id}'s item with id ${req.body} deleted`);
 });
 
+//* ********************* Health Inventory **************** */
+
+// Create a new health entry
+app.post("/health/", async (req, res) => {
+    try {
+        console.log("Received request body:", req.body);
+        
+        // Only include type-specific fields based on the entry type
+        const entryData = {
+            userId: new mongoose.Types.ObjectId('507f1f77bcf86cd799439011'), // Test user ObjectId
+            type: req.body.type,
+            value: req.body.value,
+            unit: req.body.unit,
+            date: req.body.date,
+            notes: req.body.notes
+        };
+
+        // Add type-specific fields only for the relevant type
+        if (req.body.type === 'blood_pressure') {
+            entryData.systolic = req.body.systolic;
+            entryData.diastolic = req.body.diastolic;
+        } else if (req.body.type === 'meal') {
+            entryData.mealType = req.body.mealType;
+            entryData.calories = req.body.calories;
+            entryData.nutrition = req.body.nutrition;
+        } else if (req.body.type === 'workout') {
+            entryData.workoutType = req.body.workoutType;
+            entryData.duration = req.body.duration;
+            entryData.exercises = req.body.exercises;
+        }
+        
+        console.log("Final entryData:", entryData);
+        const newEntry = await HealthInventory.createEntry(entryData);
+        res.status(201).json(newEntry);
+        console.log("POST request received on health route");
+    } catch (error) {
+        console.error("Error creating health entry:", error);
+        res.status(500).json({ error: "Failed to create health entry" });
+    }
+});
+
+// Get all health entries for a user (optionally filtered by type)
+app.get("/health/:userId", async (req, res) => {
+    try {
+        const { type } = req.query;
+        const entries = await HealthInventory.getUserEntries(new mongoose.Types.ObjectId(req.params.userId), type);
+        res.json(entries);
+        console.log("GET request received on health route");
+    } catch (error) {
+        console.error("Error fetching health entries:", error);
+        res.status(500).json({ error: "Failed to fetch health entries" });
+    }
+});
+
+// Get a specific health entry
+app.get("/health/entry/:entryId", async (req, res) => {
+    try {
+        const entry = await HealthInventory.getEntryById(req.params.entryId, new mongoose.Types.ObjectId('507f1f77bcf86cd799439011'));
+        if (!entry) {
+            return res.status(404).json({ error: "Entry not found" });
+        }
+        res.json(entry);
+    } catch (error) {
+        console.error("Error fetching health entry:", error);
+        res.status(500).json({ error: "Failed to fetch health entry" });
+    }
+});
+
+// Update a health entry
+app.patch("/health/:entryId", async (req, res) => {
+    try {
+        const updatedEntry = await HealthInventory.updateEntry(req.params.entryId, new mongoose.Types.ObjectId('507f1f77bcf86cd799439011'), req.body);
+        if (!updatedEntry) {
+            return res.status(404).json({ error: "Entry not found" });
+        }
+        res.json(updatedEntry);
+        console.log("PATCH request received on health route");
+    } catch (error) {
+        console.error("Error updating health entry:", error);
+        res.status(500).json({ error: "Failed to update health entry" });
+    }
+});
+
+// Delete a health entry
+app.delete("/health/:entryId", async (req, res) => {
+    try {
+        const deletedEntry = await HealthInventory.deleteEntry(req.params.entryId, new mongoose.Types.ObjectId('507f1f77bcf86cd799439011'));
+        if (!deletedEntry) {
+            return res.status(404).json({ error: "Entry not found" });
+        }
+        res.sendStatus(200);
+        console.log("DELETE request received on health route");
+    } catch (error) {
+        console.error("Error deleting health entry:", error);
+        res.status(500).json({ error: "Failed to delete health entry" });
+    }
+});
+
+//* ********************* External APIs **************** */
+
+// Exercise API routes
+app.get("/api/exercises", requireValidTokenAndUser, async (req, res) => {
+    try {
+        const { muscle, type, difficulty, name } = req.query;
+        let exercises;
+        
+        if (name) {
+            exercises = await ExerciseAPI.searchExercisesByName(name);
+        } else if (muscle) {
+            exercises = await ExerciseAPI.getExercisesByMuscle(muscle, difficulty);
+        } else if (type) {
+            exercises = await ExerciseAPI.getExercisesByType(type, muscle);
+        } else {
+            exercises = await ExerciseAPI.fetchExercises(req.query);
+        }
+        
+        res.json(exercises);
+    } catch (error) {
+        console.error("Error fetching exercises:", error);
+        res.status(500).json({ error: "Failed to fetch exercises" });
+    }
+});
+
+app.get("/api/exercises/all/:muscle", requireValidTokenAndUser, async (req, res) => {
+    try {
+        const exercises = await ExerciseAPI.getAllExercisesForMuscle(req.params.muscle);
+        res.json(exercises);
+    } catch (error) {
+        console.error("Error fetching all exercises:", error);
+        res.status(500).json({ error: "Failed to fetch exercises" });
+    }
+});
+
+// Nutrition API routes
+app.get("/api/nutrition/search", requireValidTokenAndUser, async (req, res) => {
+    try {
+        const { query, number } = req.query;
+        if (!query) {
+            return res.status(400).json({ error: "Query parameter is required" });
+        }
+        const results = await NutritionAPI.searchFood(query, number || 10);
+        res.json(results);
+    } catch (error) {
+        console.error("Error searching nutrition:", error);
+        res.status(500).json({ error: "Failed to search nutrition" });
+    }
+});
+
+app.get("/api/nutrition/info", requireValidTokenAndUser, async (req, res) => {
+    try {
+        const { query } = req.query;
+        if (!query) {
+            return res.status(400).json({ error: "Query parameter is required" });
+        }
+        const nutrition = await NutritionAPI.getNutritionInfo(query);
+        res.json(nutrition);
+    } catch (error) {
+        console.error("Error getting nutrition info:", error);
+        res.status(500).json({ error: "Failed to get nutrition info" });
+    }
+});
+
+app.get("/api/nutrition/food/:id", requireValidTokenAndUser, async (req, res) => {
+    try {
+        const foodInfo = await NutritionAPI.getFoodInformation(req.params.id);
+        res.json(foodInfo);
+    } catch (error) {
+        console.error("Error getting food information:", error);
+        res.status(500).json({ error: "Failed to get food information" });
+    }
+});
+
 //* ********************* Launching the server **************** */
 
 const start = async () => {
     try {
         await connectMongoose();
-        // app.listen(port, () => console.log(`Server running on port ${port}...`));
         
-        const httpsOptions = {
-            key: fs.readFileSync(path.resolve(__dirname, '../localhost-key.pem')),
-            cert: fs.readFileSync(path.resolve(__dirname, '../localhost.pem'))
-        };
-        https.createServer(httpsOptions, app).listen(port, () => {
-            console.log(`Express API server running on https://localhost:${port}`);
+        // Use HTTP for development (easier setup)
+        app.listen(port, () => {
+            console.log(`Express API server running on http://localhost:${port}`);
         });
+        
+        // Uncomment for HTTPS (requires SSL certificates)
+        // const httpsOptions = {
+        //     key: fs.readFileSync(path.resolve(__dirname, '../localhost-key.pem')),
+        //     cert: fs.readFileSync(path.resolve(__dirname, '../localhost.pem'))
+        // };
+        // https.createServer(httpsOptions, app).listen(port, () => {
+        //     console.log(`Express API server running on https://localhost:${port}`);
+        // });
     }
     catch (err) {
         console.error(err);
