@@ -21,7 +21,7 @@ const NutritionAPI = require("./api/nutrition");
 
 app.use(
     cors({
-        origin: ["http://localhost:5173"],
+        origin: ["https://localhost:5173", "https://cfa-summer2025-grocerybuddy-www.netlify.app"],
         credentials: true,
     })
 );
@@ -367,20 +367,19 @@ app.get("/api/nutrition/food/:id", requireValidTokenAndUser, async (req, res) =>
 const start = async () => {
     try {
         await connectMongoose();
+        // app.listen(port, () => console.log(`Server running on port ${port}...`));
         
-        // Use HTTP for development (easier setup)
-        app.listen(port, () => {
-            console.log(`Express API server running on http://localhost:${port}`);
-        });
-        
-        // Uncomment for HTTPS (requires SSL certificates)
-        // const httpsOptions = {
-        //     key: fs.readFileSync(path.resolve(__dirname, '../localhost-key.pem')),
-        //     cert: fs.readFileSync(path.resolve(__dirname, '../localhost.pem'))
-        // };
-        // https.createServer(httpsOptions, app).listen(port, () => {
-        //     console.log(`Express API server running on https://localhost:${port}`);
-        // });
+        if (process.env.NODE_ENV === "production") {
+            app.listen(port, () => {console.log("server running on port: " + port)})
+        } else {
+            const httpsOptions = {
+                key: fs.readFileSync(path.resolve(__dirname, '../localhost-key.pem')),
+                cert: fs.readFileSync(path.resolve(__dirname, '../localhost.pem'))
+            };
+            https.createServer(httpsOptions, app).listen(port, () => {
+                console.log(`Express API server running on https://localhost:${port}`);
+            });
+        }
     }
     catch (err) {
         console.error(err);
