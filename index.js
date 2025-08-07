@@ -14,6 +14,7 @@ const bcrypt = require("bcrypt");
 const { connectMongoose } = require("./connect");
 const User = require("./models/User");
 const Grocery = require("./models/Grocery");
+const Budget = require("./models/Budget")
 
 app.use(
     cors({
@@ -49,8 +50,7 @@ app.post("/signup", async (req, res) => {
                     sameSite: "None",
                     secure: true,
                 });
-
-                res.sendStatus(201);
+                res.status(201).json({userId: results._id});
             } else {
                 res.sendStatus(500);
             }
@@ -63,7 +63,7 @@ app.post("/signup", async (req, res) => {
 app.post("/login", async (req, res) => {
     console.log("POST request received on login route");
     const user = req.body;
-
+    
     const existingUser = await User.findOne({ username: user.username }).exec();
     if (existingUser !== null) {
         bcrypt.compare(
@@ -81,8 +81,7 @@ app.post("/login", async (req, res) => {
                         sameSite: "None",
                         secure: true,
                     });
-
-                    res.sendStatus(200);
+                    res.status(200).json({userId: existingUser._id});
                 } else {
                     res.sendStatus(401);
                 }
@@ -143,6 +142,7 @@ app.post("/grocery/", requireValidTokenAndUser, async (req, res) => {
     const results = await Grocery.addOrUpdateItem(newItem);
     res.sendStatus(201);
     
+    
     console.log("POST request received on grocery route");
 });
 
@@ -200,6 +200,218 @@ app.delete("/grocery/:itemId", requireValidTokenAndUser, async (req, res) => {
     console.log("DELETE request received on message route");
     // console.log(`User ${req.params.id}'s item with id ${req.body} deleted`);
 });
+//* ********************* Budget Tracker **************** */
+
+// Add a new grocery item.
+// Body json:
+// {
+//     "ownerId": String,
+//     "name": String,
+//     "price": String,
+//     "date": Date,
+//     "category": String
+// }
+app.post("/budget/", requireValidTokenAndUser, async (req, res) => {
+    // console.log("PRINTING REQ BODY:", req.body);
+    const newItem = req.body;
+    const results = await Budget.addItem(newItem);
+    res.sendStatus(201);
+    
+    console.log("POST request received on budget route");
+});
+
+// Get budget items from a user
+app.get("/budget/:userId", requireValidTokenAndUser, async (req, res) => {
+    const results = await Budget.readAll(req.params.userId);
+    // console.log("PRINTING RESULTS:", results);
+    res.send(results); //separation of item categories must be implemented 
+
+    console.log("GET request received on budget page");
+});
+
+// // Update an existing item's name or quantity.
+// // Body json:
+// // {
+// //     "ownerId": String,
+// //     "name": String,
+// //     "price": String,
+// //     "date": Date,
+// //     "category": String
+// // }
+// app.patch("/budget/", requireValidTokenAndUser, async (req, res) => {
+//     const itemUpdate = req.body;
+//     const results = await Budget.updateItem(itemUpdate); //does not yet exist
+
+//     res.sendStatus(200);
+
+//     console.log("PATCH request received on budget route");
+// });
+
+// Delete an existing item
+// Body json:
+// {
+//     "_id": String
+// }
+app.delete("/budget/", requireValidTokenAndUser, async (req, res) => {
+    const results = await Budget.delete(req.body);
+    res.sendStatus(200);
+
+    console.log("DELETE request received on budget route");
+    // // console.log(`User ${req.params.id}'s item with id ${req.body} deleted`);
+});
+
+//* ********************* Storage Operations **************** */
+
+// Get grocery list items from a user
+
+
+// app.get("/inventory/:userId", /*requireValidTokenAndUser,*/ async (req, res) => {
+//     //const storageType = req.query.storageType || "bag"; 
+//     //const results = await Grocery.readType(req.params.userId, storageType, true);
+//     const results = await Grocery.readAll(req.params.userId);
+//     console.log("PRINTING RESULTS:", results);
+//     res.send(results); //separation of item categories must be implemented 
+
+//     console.log("GET request received on grocery page");
+// });
+
+app.get("/inventory/", /*requireValidTokenAndUser,*/ async (req, res) => {
+    //const itemUpdate = req.body;
+    const results = await Grocery.test();
+    res.send(results);
+
+    console.log("PATCH request received on message route");
+    console.log(results);
+});
+
+//* ********************* Storage Operations **************** */
+
+
+//* ********************* Recipe **************** */
+
+// Search a recipe by keyword and ingredients
+// req body = {
+//     "query": String,
+//     "ingreds": List of strings
+// }
+app.post("/recipe/search", async (req, res) => {
+    // const token = process.env.ACCESS_TOKEN;
+    // if (!token) {
+    //     return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    // }
+
+    // prevents undefined
+    const { query = "", ingreds = [] } = req.body;
+
+    // Join the array into a comma-separated list, trimming just in case, because API wants ingreds formated as tomato,cheese
+    const includeIngredients = ingreds
+        .map(i => i.trim())
+        .filter(i => i)       // remove any empty strings
+        .join(",");
+
+    console.log("QUERY:::::::", query)//
+    console.log("INGREDS:::::::", ingreds)//
+
+    // Build URL params with URLSearchParams for safe encoding
+    const params = new URLSearchParams({
+        apiKey: process.env.SPOONACULAR_KEY,
+        addRecipeInformation: "true",
+        number: "10",
+    });
+    if (query) params.append("query", query);
+    if (includeIngredients) params.append("includeIngredients", includeIngredients);
+
+    const endpoint = `https://api.spoonacular.com/recipes/complexSearch?${params}`;
+
+    try {
+        const resp = await fetch(endpoint);
+        const data = await resp.json();
+        return res.status(resp.status).json(data);
+    } catch (err) {
+        return res.status(502).json({ error: err.message });
+    }
+});
+
+// Save a recipe
+app.post('/recipe/search/', async (req, res) => {
+    const zip = req.query.zip;
+    // const token = process.env.ACCESS_TOKEN;
+    if (!token) {
+        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    }
+
+    const apiUrl =
+        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+
+    try {
+        const resp = await fetch(apiUrl + zip, {
+            headers: {
+                "Accept": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        const data = await resp.json();
+        console.log(data);//
+
+        return res.status(resp.status).json(data);
+    } catch (err) {
+        return res.status(502).json({ error: err.message });
+    }
+})
+
+// Delete a saved recipe
+app.get('/recipe/search/', async (req, res) => {
+    const zip = req.query.zip;
+    // const token = process.env.ACCESS_TOKEN;
+    if (!token) {
+        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    }
+
+    const apiUrl =
+        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+
+    try {
+        const resp = await fetch(apiUrl + zip, {
+            headers: {
+                "Accept": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        const data = await resp.json();
+        console.log(data);//
+
+        return res.status(resp.status).json(data);
+    } catch (err) {
+        return res.status(502).json({ error: err.message });
+    }
+})
+
+// Show saved recipes
+app.get('/recipe/search/', async (req, res) => {
+    const zip = req.query.zip;
+    // const token = process.env.ACCESS_TOKEN;
+    if (!token) {
+        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    }
+
+    const apiUrl =
+        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+
+    try {
+        const resp = await fetch(apiUrl + zip, {
+            headers: {
+                "Accept": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        const data = await resp.json();
+        console.log(data);//
+
+        return res.status(resp.status).json(data);
+    } catch (err) {
+        return res.status(502).json({ error: err.message });
+    }
+})
 
 //* ********************* Launching the server **************** */
 
