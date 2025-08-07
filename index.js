@@ -142,6 +142,7 @@ app.post("/grocery/", requireValidTokenAndUser, async (req, res) => {
     const results = await Grocery.addOrUpdateItem(newItem);
     res.sendStatus(201);
     
+    
     console.log("POST request received on grocery route");
 });
 
@@ -172,13 +173,28 @@ app.patch("/grocery/", requireValidTokenAndUser, async (req, res) => {
     console.log("PATCH request received on message route");
 });
 
+// Update an existing item with item id req.params.itemId by specified field.
+// Body json:
+// {
+//     fieldName: newVal
+// }
+app.patch("/grocery/:itemId", requireValidTokenAndUser, async (req, res) => {
+    const updateField = req.body;
+
+    const results = await Grocery.findByIdAndUpdate(req.params.itemId, updateField, {new: true});
+
+    res.sendStatus(200);
+
+   console.log(`PATCH request received on grocery itemId ${req.params.itemId} route`);
+});
+
 // Delete an existing item
 // Body json:
 // {
 //     "_id": String
 // }
-app.delete("/grocery/", requireValidTokenAndUser, async (req, res) => {
-    const results = await Grocery.delete(req.body);
+app.delete("/grocery/:itemId", requireValidTokenAndUser, async (req, res) => {
+    const results = await Grocery.delete(req.params.itemId);
     res.sendStatus(200);
 
     console.log("DELETE request received on message route");
@@ -241,8 +257,161 @@ app.delete("/budget/", requireValidTokenAndUser, async (req, res) => {
     res.sendStatus(200);
 
     console.log("DELETE request received on budget route");
-    // console.log(`User ${req.params.id}'s item with id ${req.body} deleted`);
+    // // console.log(`User ${req.params.id}'s item with id ${req.body} deleted`);
 });
+
+//* ********************* Storage Operations **************** */
+
+// Get grocery list items from a user
+
+
+// app.get("/inventory/:userId", /*requireValidTokenAndUser,*/ async (req, res) => {
+//     //const storageType = req.query.storageType || "bag"; 
+//     //const results = await Grocery.readType(req.params.userId, storageType, true);
+//     const results = await Grocery.readAll(req.params.userId);
+//     console.log("PRINTING RESULTS:", results);
+//     res.send(results); //separation of item categories must be implemented 
+
+//     console.log("GET request received on grocery page");
+// });
+
+app.get("/inventory/", /*requireValidTokenAndUser,*/ async (req, res) => {
+    //const itemUpdate = req.body;
+    const results = await Grocery.test();
+    res.send(results);
+
+    console.log("PATCH request received on message route");
+    console.log(results);
+});
+
+//* ********************* Storage Operations **************** */
+
+
+//* ********************* Recipe **************** */
+
+// Search a recipe by keyword and ingredients
+// req body = {
+//     "query": String,
+//     "ingreds": List of strings
+// }
+app.post("/recipe/search", async (req, res) => {
+    // const token = process.env.ACCESS_TOKEN;
+    // if (!token) {
+    //     return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    // }
+
+    // prevents undefined
+    const { query = "", ingreds = [] } = req.body;
+
+    // Join the array into a comma-separated list, trimming just in case, because API wants ingreds formated as tomato,cheese
+    const includeIngredients = ingreds
+        .map(i => i.trim())
+        .filter(i => i)       // remove any empty strings
+        .join(",");
+
+    console.log("QUERY:::::::", query)//
+    console.log("INGREDS:::::::", ingreds)//
+
+    // Build URL params with URLSearchParams for safe encoding
+    const params = new URLSearchParams({
+        apiKey: process.env.SPOONACULAR_KEY,
+        addRecipeInformation: "true",
+        number: "10",
+    });
+    if (query) params.append("query", query);
+    if (includeIngredients) params.append("includeIngredients", includeIngredients);
+
+    const endpoint = `https://api.spoonacular.com/recipes/complexSearch?${params}`;
+
+    try {
+        const resp = await fetch(endpoint);
+        const data = await resp.json();
+        return res.status(resp.status).json(data);
+    } catch (err) {
+        return res.status(502).json({ error: err.message });
+    }
+});
+
+// Save a recipe
+app.post('/recipe/search/', async (req, res) => {
+    const zip = req.query.zip;
+    // const token = process.env.ACCESS_TOKEN;
+    if (!token) {
+        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    }
+
+    const apiUrl =
+        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+
+    try {
+        const resp = await fetch(apiUrl + zip, {
+            headers: {
+                "Accept": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        const data = await resp.json();
+        console.log(data);//
+
+        return res.status(resp.status).json(data);
+    } catch (err) {
+        return res.status(502).json({ error: err.message });
+    }
+})
+
+// Delete a saved recipe
+app.get('/recipe/search/', async (req, res) => {
+    const zip = req.query.zip;
+    // const token = process.env.ACCESS_TOKEN;
+    if (!token) {
+        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    }
+
+    const apiUrl =
+        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+
+    try {
+        const resp = await fetch(apiUrl + zip, {
+            headers: {
+                "Accept": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        const data = await resp.json();
+        console.log(data);//
+
+        return res.status(resp.status).json(data);
+    } catch (err) {
+        return res.status(502).json({ error: err.message });
+    }
+})
+
+// Show saved recipes
+app.get('/recipe/search/', async (req, res) => {
+    const zip = req.query.zip;
+    // const token = process.env.ACCESS_TOKEN;
+    if (!token) {
+        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    }
+
+    const apiUrl =
+        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+
+    try {
+        const resp = await fetch(apiUrl + zip, {
+            headers: {
+                "Accept": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        const data = await resp.json();
+        console.log(data);//
+
+        return res.status(resp.status).json(data);
+    } catch (err) {
+        return res.status(502).json({ error: err.message });
+    }
+})
 
 //* ********************* Launching the server **************** */
 
