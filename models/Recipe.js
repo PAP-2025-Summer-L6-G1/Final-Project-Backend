@@ -3,49 +3,57 @@ const collectionName = "savedRecipes";
 const { Schema, model } = require('mongoose');
 
 const recipeSchema = new Schema({
-  ownerId: String,
-  name: String,
-  quantity: Number,
-  category: String,
-  isBought: Boolean
+    ownerId: String,
+    recipeId: Number,
+    // name: String, //would be useful, but not sure how to implement getting it rn in the frontend code
 });
 
 class RecipeClass {
-  static async addRecipe(item) {
-    try {
-      //UPSERT: replace item if it exists, otherwise add new
-      return await Grocery.findOneAndUpdate(
-        { ownerId: item.ownerId, name: item.name },
-        { $set: item },
-        { new: true, upsert: true }
-      );
+    static async addRecipe(item) {
+        try {
+            //UPSERT: replace item if it exists, otherwise add new
+            return await Recipe.findOneAndUpdate(
+                { recipeId: item.recipeId, ownerId: item.ownerId },
+                { $set: item },
+                { new: true, upsert: true }
+            );
+        }
+        catch (e) {
+            console.error(e);
+            return { _id: -1 }
+        }
     }
-    catch (e) {
-      console.error(e);
-      return {_id: -1}
+    static async get(id) {
+        try {
+            const result = await Recipe.findOne({ recipeId: id });
+            return result;
+        }
+        catch (e) {
+            console.error(e);
+            return null;
+        }
     }
-  }
-  static async getRecipes(userId) { //we dont need a param bc the mediator checks for valid token
-    try {
-      const results = await Grocery.find({ownerId: userId}).sort({category:1}).exec();
-      //make results lists of dairy,meat,grain?
-      return results;
+    static async getRecipes(userId) { //we dont need a param bc the mediator checks for valid token
+        try {
+            const results = await Recipe.find({ ownerId: userId }).sort({ category: 1 }).exec();
+            //make results lists of dairy,meat,grain?
+            return results;
+        }
+        catch (e) {
+            console.error(e);
+            return [];
+        }
     }
-    catch (e) {
-      console.error(e);
-      return [];
+    static async deleteRecipe(item) {
+        try {
+            const result = await Recipe.deleteOne({ _id: item._id });
+            return result;
+        }
+        catch (e) {
+            console.error(e);
+            return { deletedCount: 0 };
+        }
     }
-  }
-  static async deleteRecipe(item) {
-    try {
-      const result = await Grocery.deleteOne({_id: item._id});
-      return result;
-    }
-    catch (e) {
-      console.error(e);
-      return {deletedCount: 0};
-    }
-  }
 }
 
 recipeSchema.loadClass(RecipeClass);

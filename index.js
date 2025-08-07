@@ -14,6 +14,7 @@ const bcrypt = require("bcrypt");
 const { connectMongoose } = require("./connect");
 const User = require("./models/User");
 const Grocery = require("./models/Grocery");
+const Recipe = require("./models/Recipe")
 
 app.use(
     cors({
@@ -194,6 +195,7 @@ app.delete("/grocery/", requireValidTokenAndUser, async (req, res) => {
 //     "ingreds": List of strings
 // }
 app.post("/recipe/search", async (req, res) => {
+    //TODO
     // const token = process.env.ACCESS_TOKEN;
     // if (!token) {
     //     return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
@@ -208,8 +210,8 @@ app.post("/recipe/search", async (req, res) => {
         .filter(i => i)       // remove any empty strings
         .join(",");
 
-    console.log("QUERY:::::::", query)//
-    console.log("INGREDS:::::::", ingreds)//
+    console.log("QUERY:", query)//
+    console.log("INGREDS:", ingreds)//
 
     // Build URL params with URLSearchParams for safe encoding
     const params = new URLSearchParams({
@@ -232,30 +234,35 @@ app.post("/recipe/search", async (req, res) => {
 });
 
 // Save a recipe
-app.post('/recipe/search/', async (req, res) => {
-    const zip = req.query.zip;
+app.post('/recipe/save', async (req, res) => {
+    //TODO
     // const token = process.env.ACCESS_TOKEN;
-    if (!token) {
-        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
-    }
+    // if (!token) {
+    //     return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    // }
 
-    const apiUrl =
-        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+    const recipe = req.body;
+    const results = await Recipe.addRecipe(recipe);
 
-    try {
-        const resp = await fetch(apiUrl + zip, {
-            headers: {
-                "Accept": "application/json",
-                "Authorization": `Bearer ${token}`
-            }
-        });
-        const data = await resp.json();
-        console.log(data);//
+    res.status(200).json(results);
 
-        return res.status(resp.status).json(data);
-    } catch (err) {
-        return res.status(502).json({ error: err.message });
-    }
+    console.log("POST request received on recipe route");
+})
+
+// Check if a recipe is saved
+app.get('/recipe/check', async (req, res) => {
+    //TODO
+    // const token = process.env.ACCESS_TOKEN;
+    // if (!token) {
+    //     return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    // }
+
+    const recipe = req.body;
+    const results = await Recipe.get(recipe);
+
+    res.status(200).json(results.json());
+
+    console.log("GET request received on recipe route");
 })
 
 // Delete a saved recipe
