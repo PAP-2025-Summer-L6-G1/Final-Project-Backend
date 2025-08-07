@@ -18,7 +18,7 @@ const Budget = require("./models/Budget")
 
 app.use(
     cors({
-        origin: ["https://localhost:5173"],
+        origin: ["https://localhost:5173", "https://cfa-summer2025-grocerybuddy-www.netlify.app"],
         credentials: true,
     })
 );
@@ -251,13 +251,17 @@ const start = async () => {
         await connectMongoose();
         // app.listen(port, () => console.log(`Server running on port ${port}...`));
         
-        const httpsOptions = {
-            key: fs.readFileSync(path.resolve(__dirname, '../localhost-key.pem')),
-            cert: fs.readFileSync(path.resolve(__dirname, '../localhost.pem'))
-        };
-        https.createServer(httpsOptions, app).listen(port, () => {
-            console.log(`Express API server running on https://localhost:${port}`);
-        });
+        if (process.env.NODE_ENV === "production") {
+            app.listen(port, () => {console.log("server running on port: " + port)})
+        } else {
+            const httpsOptions = {
+                key: fs.readFileSync(path.resolve(__dirname, '../localhost-key.pem')),
+                cert: fs.readFileSync(path.resolve(__dirname, '../localhost.pem'))
+            };
+            https.createServer(httpsOptions, app).listen(port, () => {
+                console.log(`Express API server running on https://localhost:${port}`);
+            });
+        }
     }
     catch (err) {
         console.error(err);
