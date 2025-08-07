@@ -15,6 +15,7 @@ const { connectMongoose } = require("./connect");
 const User = require("./models/User");
 const Grocery = require("./models/Grocery");
 const Recipe = require("./models/Recipe")
+const Budget = require("./models/Budget")
 
 app.use(
     cors({
@@ -50,8 +51,7 @@ app.post("/signup", async (req, res) => {
                     sameSite: "None",
                     secure: true,
                 });
-
-                res.sendStatus(201);
+                res.status(201).json({userId: results._id});
             } else {
                 res.sendStatus(500);
             }
@@ -64,7 +64,7 @@ app.post("/signup", async (req, res) => {
 app.post("/login", async (req, res) => {
     console.log("POST request received on login route");
     const user = req.body;
-
+    
     const existingUser = await User.findOne({ username: user.username }).exec();
     if (existingUser !== null) {
         bcrypt.compare(
@@ -82,8 +82,7 @@ app.post("/login", async (req, res) => {
                         sameSite: "None",
                         secure: true,
                     });
-
-                    res.sendStatus(200);
+                    res.status(200).json({userId: existingUser._id});
                 } else {
                     res.sendStatus(401);
                 }
@@ -144,6 +143,7 @@ app.post("/grocery/", requireValidTokenAndUser, async (req, res) => {
     const results = await Grocery.addOrUpdateItem(newItem);
     res.sendStatus(201);
     
+    
     console.log("POST request received on grocery route");
 });
 
@@ -174,18 +174,119 @@ app.patch("/grocery/", requireValidTokenAndUser, async (req, res) => {
     console.log("PATCH request received on message route");
 });
 
+// Update an existing item with item id req.params.itemId by specified field.
+// Body json:
+// {
+//     fieldName: newVal
+// }
+app.patch("/grocery/:itemId", requireValidTokenAndUser, async (req, res) => {
+    const updateField = req.body;
+
+    const results = await Grocery.findByIdAndUpdate(req.params.itemId, updateField, {new: true});
+
+    res.sendStatus(200);
+
+   console.log(`PATCH request received on grocery itemId ${req.params.itemId} route`);
+});
+
 // Delete an existing item
 // Body json:
 // {
 //     "_id": String
 // }
-app.delete("/grocery/", requireValidTokenAndUser, async (req, res) => {
-    const results = await Grocery.delete(req.body);
+app.delete("/grocery/:itemId", requireValidTokenAndUser, async (req, res) => {
+    const results = await Grocery.delete(req.params.itemId);
     res.sendStatus(200);
 
     console.log("DELETE request received on message route");
     // console.log(`User ${req.params.id}'s item with id ${req.body} deleted`);
 });
+//* ********************* Budget Tracker **************** */
+
+// Add a new grocery item.
+// Body json:
+// {
+//     "ownerId": String,
+//     "name": String,
+//     "price": String,
+//     "date": Date,
+//     "category": String
+// }
+app.post("/budget/", requireValidTokenAndUser, async (req, res) => {
+    // console.log("PRINTING REQ BODY:", req.body);
+    const newItem = req.body;
+    const results = await Budget.addItem(newItem);
+    res.sendStatus(201);
+    
+    console.log("POST request received on budget route");
+});
+
+// Get budget items from a user
+app.get("/budget/:userId", requireValidTokenAndUser, async (req, res) => {
+    const results = await Budget.readAll(req.params.userId);
+    // console.log("PRINTING RESULTS:", results);
+    res.send(results); //separation of item categories must be implemented 
+
+    console.log("GET request received on budget page");
+});
+
+// // Update an existing item's name or quantity.
+// // Body json:
+// // {
+// //     "ownerId": String,
+// //     "name": String,
+// //     "price": String,
+// //     "date": Date,
+// //     "category": String
+// // }
+// app.patch("/budget/", requireValidTokenAndUser, async (req, res) => {
+//     const itemUpdate = req.body;
+//     const results = await Budget.updateItem(itemUpdate); //does not yet exist
+
+//     res.sendStatus(200);
+
+//     console.log("PATCH request received on budget route");
+// });
+
+// Delete an existing item
+// Body json:
+// {
+//     "_id": String
+// }
+app.delete("/budget/", requireValidTokenAndUser, async (req, res) => {
+    const results = await Budget.delete(req.body);
+    res.sendStatus(200);
+
+    console.log("DELETE request received on budget route");
+    // // console.log(`User ${req.params.id}'s item with id ${req.body} deleted`);
+});
+
+//* ********************* Storage Operations **************** */
+
+// Get grocery list items from a user
+
+
+// app.get("/inventory/:userId", /*requireValidTokenAndUser,*/ async (req, res) => {
+//     //const storageType = req.query.storageType || "bag"; 
+//     //const results = await Grocery.readType(req.params.userId, storageType, true);
+//     const results = await Grocery.readAll(req.params.userId);
+//     console.log("PRINTING RESULTS:", results);
+//     res.send(results); //separation of item categories must be implemented 
+
+//     console.log("GET request received on grocery page");
+// });
+
+app.get("/inventory/", /*requireValidTokenAndUser,*/ async (req, res) => {
+    //const itemUpdate = req.body;
+    const results = await Grocery.test();
+    res.send(results);
+
+    console.log("PATCH request received on message route");
+    console.log(results);
+});
+
+//* ********************* Storage Operations **************** */
+
 
 //* ********************* Recipe **************** */
 

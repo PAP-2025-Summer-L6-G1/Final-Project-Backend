@@ -1,5 +1,5 @@
 const { connectMongoose } = require('../connect');
-const collectionName = process.env.DB_COLL_NAME;
+const collectionName = process.env.DB_GROCERY_LIST;
 const { Schema, model } = require('mongoose');
 
 const grocerySchema = new Schema({ //one grocery item
@@ -7,7 +7,8 @@ const grocerySchema = new Schema({ //one grocery item
   name: String,
   quantity: Number,
   category: String,
-  isBought: Boolean
+  isBought: Boolean,
+  storageType: String
 });
 
 class GroceryClass {
@@ -25,9 +26,38 @@ class GroceryClass {
       return {_id: -1}
     }
   }
+
+  //This should be subbed by readType. If this is for the grocerylist, make your find by userId, set type to "bag" and isBought to false.
   static async readAll(userId) { //we dont need a param bc the mediator checks for valid token
     try {
       const results = await Grocery.find({ownerId: userId}).sort({category:1}).exec();
+      //make results lists of dairy,meat,grain?
+      return results;
+    }
+    catch (e) {
+      console.error(e);
+      return [];
+    }
+  }
+
+  static async test() {
+    try {
+      const results = await Grocery.find({}).sort({category:1}).exec();
+      //make results lists of dairy,meat,grain?
+      return results;
+    }
+    catch (e) {
+      console.error(e);
+      return [];
+    }
+  }
+
+   static async readType(userId, type, isBought) { //This is for the storage page, if you want to make modifications, let Nick know
+    try {
+      console.log("type:", type);
+      console.log("isBought:", isBought);
+      console.log("userId:", userId);
+      const results = await Grocery.find({ownerId: userId, storageType: type, isBought: isBought}).sort({category:1}).exec();
       //make results lists of dairy,meat,grain?
       return results;
     }
@@ -49,9 +79,9 @@ class GroceryClass {
   //     }
   //   }
   // }
-  static async delete(item) {
+  static async delete(itemId) {
     try {
-      const result = await Grocery.deleteOne({_id: item._id});
+      const result = await Grocery.deleteOne({_id: itemId});
       return result;
     }
     catch (e) {
