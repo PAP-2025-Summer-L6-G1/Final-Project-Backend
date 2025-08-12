@@ -21,7 +21,7 @@ const Budget = require("./models/Budget")
 
 app.use(
     cors({
-        origin: ["http://localhost:5173", "http://localhost:5174", "https://localhost:5173", "https://cfa-summer2025-grocerybuddy-www.netlify.app"],
+        origin: ["https://localhost:5173", "https://cfa-summer2025-grocerybuddy-www.netlify.app"],
         credentials: true,
     })
 );
