@@ -15,6 +15,7 @@ const { connectMongoose } = require("./connect");
 const mongoose = require("mongoose");
 const User = require("./models/User");
 const Grocery = require("./models/Grocery");
+const HealthInventory = require("./models/HealthInventory");
 const Recipe = require("./models/Recipe")
 const Budget = require("./models/Budget")
 
@@ -286,6 +287,166 @@ app.get("/inventory/", /*requireValidTokenAndUser,*/ async (req, res) => {
 
     console.log("PATCH request received on message route");
     console.log(results);
+});
+
+//* ********************* Health Inventory **************** */
+
+// Create a new health entry
+app.post("/health/", requireValidTokenAndUser, async (req, res) => {
+    try {
+        console.log("Received request body:", req.body);
+        
+        // Extract user ID from JWT token
+        const token = req.cookies.token;
+        console.log('CREATE - All cookies:', req.cookies);
+        console.log('CREATE - Token received:', token);
+        if (!token) {
+            console.log('CREATE - No token found in cookies');
+            return res.status(401).json({ error: "No token provided" });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log('CREATE - Decoded token:', decoded);
+        const userId = new mongoose.Types.ObjectId(decoded.userId);
+        console.log('CREATE - Extracted userId:', userId);
+        
+        // Only include type-specific fields based on the entry type
+        const entryData = {
+            userId: userId,
+            type: req.body.type,
+            value: req.body.value,
+            date: req.body.date,
+            notes: req.body.notes
+        };
+
+        // Add unit field only for types that need it (weight, blood_pressure)
+        if (req.body.type === 'weight' || req.body.type === 'blood_pressure') {
+            entryData.unit = req.body.unit;
+        }
+
+        // Add type-specific fields only for the relevant type
+        if (req.body.type === 'blood_pressure') {
+            entryData.systolic = req.body.systolic;
+            entryData.diastolic = req.body.diastolic;
+        } else if (req.body.type === 'meal') {
+            // Only add mealType if it's not empty to avoid enum validation error
+            if (req.body.mealType && req.body.mealType.trim() !== '') {
+                entryData.mealType = req.body.mealType;
+            }
+            entryData.calories = req.body.calories;
+            entryData.nutrition = req.body.nutrition;
+        } else if (req.body.type === 'workout') {
+            // Only add workoutType if it's not empty to avoid enum validation error
+            if (req.body.workoutType && req.body.workoutType.trim() !== '') {
+                entryData.workoutType = req.body.workoutType;
+            }
+            entryData.duration = req.body.duration;
+            entryData.exercises = req.body.exercises;
+        }
+        
+        console.log("Final entryData:", entryData);
+        const newEntry = await HealthInventory.createEntry(entryData);
+        res.status(201).json(newEntry);
+        console.log("POST request received on health route");
+    } catch (error) {
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ error: "Invalid token" });
+        }
+        console.error("Error creating health entry:", error);
+        res.status(500).json({ error: "Failed to create health entry" });
+    }
+});
+
+// Get all health entries for a user (optionally filtered by type)
+app.get("/health/", requireValidTokenAndUser, async (req, res) => {
+    try {
+        // Extract user ID from JWT token
+        const token = req.cookies.token;
+        if (!token) {
+            return res.status(401).json({ error: "No token provided" });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log('FETCH - Decoded token:', decoded);
+        const userId = new mongoose.Types.ObjectId(decoded.userId);
+        console.log('FETCH - Extracted userId:', userId);
+
+        const { type } = req.query;
+        const entries = await HealthInventory.getUserEntries(userId, type);
+        res.json(entries);
+        console.log("GET request received on health route");
+    } catch (error) {
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ error: "Invalid token" });
+        }
+        console.error("Error fetching health entries:", error);
+        res.status(500).json({ error: "Failed to fetch health entries" });
+    }
+});
+
+// Update a health entry
+app.patch("/health/:entryId", requireValidTokenAndUser, async (req, res) => {
+    try {
+        // Extract user ID from JWT token
+        const token = req.cookies.token;
+        if (!token) {
+            return res.status(401).json({ error: "No token provided" });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = new mongoose.Types.ObjectId(decoded.userId);
+
+        // Clean the update data to avoid enum validation errors
+        const updateData = { ...req.body };
+        
+        // Remove empty enum fields to avoid validation errors
+        if (updateData.mealType === '') {
+            delete updateData.mealType;
+        }
+        if (updateData.workoutType === '') {
+            delete updateData.workoutType;
+        }
+
+        const updatedEntry = await HealthInventory.updateEntry(req.params.entryId, userId, updateData);
+        if (!updatedEntry) {
+            return res.status(404).json({ error: "Entry not found" });
+        }
+        res.json(updatedEntry);
+        console.log("PATCH request received on health route");
+    } catch (error) {
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ error: "Invalid token" });
+        }
+        console.error("Error updating health entry:", error);
+        res.status(500).json({ error: "Failed to update health entry" });
+    }
+});
+
+// Delete a health entry
+app.delete("/health/:entryId", requireValidTokenAndUser, async (req, res) => {
+    try {
+        // Extract user ID from JWT token
+        const token = req.cookies.token;
+        if (!token) {
+            return res.status(401).json({ error: "No token provided" });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = new mongoose.Types.ObjectId(decoded.userId);
+
+        const deletedEntry = await HealthInventory.deleteEntry(req.params.entryId, userId);
+        if (!deletedEntry) {
+            return res.status(404).json({ error: "Entry not found" });
+        }
+        res.sendStatus(200);
+        console.log("DELETE request received on health route");
+    } catch (error) {
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ error: "Invalid token" });
+        }
+        console.error("Error deleting health entry:", error);
+        res.status(500).json({ error: "Failed to delete health entry" });
+    }
 });
 
 //* ********************* Storage Operations **************** */
