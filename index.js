@@ -15,9 +15,7 @@ const { connectMongoose } = require("./connect");
 const mongoose = require("mongoose");
 const User = require("./models/User");
 const Grocery = require("./models/Grocery");
-const HealthInventory = require("./models/HealthInventory");
-const ExerciseAPI = require("./api/exercises");
-const NutritionAPI = require("./api/nutrition");
+const Budget = require("./models/Budget")
 
 app.use(
     cors({
@@ -55,9 +53,7 @@ app.post("/signup", async (req, res) => {
                     sameSite: "lax",
                     secure: false, // Set to false for HTTP localhost development
                 });
-
-                console.log('SIGNUP - Cookie set, sending 201 response');
-                res.sendStatus(201);
+                res.status(201).json({userId: results._id});
             } else {
                 res.sendStatus(500);
             }
@@ -70,7 +66,7 @@ app.post("/signup", async (req, res) => {
 app.post("/login", async (req, res) => {
     console.log("POST request received on login route");
     const user = req.body;
-
+    
     const existingUser = await User.findOne({ username: user.username }).exec();
     if (existingUser !== null) {
         bcrypt.compare(
@@ -88,8 +84,7 @@ app.post("/login", async (req, res) => {
                         sameSite: "lax",
                         secure: false, // Set to false for HTTP localhost development
                     });
-
-                    res.sendStatus(200);
+                    res.status(200).json({userId: existingUser._id});
                 } else {
                     res.sendStatus(401);
                 }
@@ -150,6 +145,7 @@ app.post("/grocery/", requireValidTokenAndUser, async (req, res) => {
     const results = await Grocery.addOrUpdateItem(newItem);
     res.sendStatus(201);
     
+    
     console.log("POST request received on grocery route");
 });
 
@@ -180,278 +176,245 @@ app.patch("/grocery/", requireValidTokenAndUser, async (req, res) => {
     console.log("PATCH request received on message route");
 });
 
+// Update an existing item with item id req.params.itemId by specified field.
+// Body json:
+// {
+//     fieldName: newVal
+// }
+app.patch("/grocery/:itemId", requireValidTokenAndUser, async (req, res) => {
+    const updateField = req.body;
+
+    const results = await Grocery.findByIdAndUpdate(req.params.itemId, updateField, {new: true});
+
+    res.sendStatus(200);
+
+   console.log(`PATCH request received on grocery itemId ${req.params.itemId} route`);
+});
+
 // Delete an existing item
 // Body json:
 // {
 //     "_id": String
 // }
-app.delete("/grocery/", requireValidTokenAndUser, async (req, res) => {
-    const results = await Grocery.delete(req.body);
+app.delete("/grocery/:itemId", requireValidTokenAndUser, async (req, res) => {
+    const results = await Grocery.delete(req.params.itemId);
     res.sendStatus(200);
 
     console.log("DELETE request received on message route");
     // console.log(`User ${req.params.id}'s item with id ${req.body} deleted`);
 });
+//* ********************* Budget Tracker **************** */
 
-//* ********************* Health Inventory **************** */
+// Add a new grocery item.
+// Body json:
+// {
+//     "ownerId": String,
+//     "name": String,
+//     "price": String,
+//     "date": Date,
+//     "category": String
+// }
+app.post("/budget/", requireValidTokenAndUser, async (req, res) => {
+    // console.log("PRINTING REQ BODY:", req.body);
+    const newItem = req.body;
+    const results = await Budget.addItem(newItem);
+    res.sendStatus(201);
+    
+    console.log("POST request received on budget route");
+});
 
-// Create a new health entry
-app.post("/health/", requireValidTokenAndUser, async (req, res) => {
+// Get budget items from a user
+app.get("/budget/:userId", requireValidTokenAndUser, async (req, res) => {
+    const results = await Budget.readAll(req.params.userId);
+    // console.log("PRINTING RESULTS:", results);
+    res.send(results); //separation of item categories must be implemented 
+
+    console.log("GET request received on budget page");
+});
+
+// // Update an existing item's name or quantity.
+// // Body json:
+// // {
+// //     "ownerId": String,
+// //     "name": String,
+// //     "price": String,
+// //     "date": Date,
+// //     "category": String
+// // }
+// app.patch("/budget/", requireValidTokenAndUser, async (req, res) => {
+//     const itemUpdate = req.body;
+//     const results = await Budget.updateItem(itemUpdate); //does not yet exist
+
+//     res.sendStatus(200);
+
+//     console.log("PATCH request received on budget route");
+// });
+
+// Delete an existing item
+// Body json:
+// {
+//     "_id": String
+// }
+app.delete("/budget/", requireValidTokenAndUser, async (req, res) => {
+    const results = await Budget.delete(req.body);
+    res.sendStatus(200);
+
+    console.log("DELETE request received on budget route");
+    // // console.log(`User ${req.params.id}'s item with id ${req.body} deleted`);
+});
+
+//* ********************* Storage Operations **************** */
+
+// Get grocery list items from a user
+
+
+// app.get("/inventory/:userId", /*requireValidTokenAndUser,*/ async (req, res) => {
+//     //const storageType = req.query.storageType || "bag"; 
+//     //const results = await Grocery.readType(req.params.userId, storageType, true);
+//     const results = await Grocery.readAll(req.params.userId);
+//     console.log("PRINTING RESULTS:", results);
+//     res.send(results); //separation of item categories must be implemented 
+
+//     console.log("GET request received on grocery page");
+// });
+
+app.get("/inventory/", /*requireValidTokenAndUser,*/ async (req, res) => {
+    //const itemUpdate = req.body;
+    const results = await Grocery.test();
+    res.send(results);
+
+    console.log("PATCH request received on message route");
+    console.log(results);
+});
+
+//* ********************* Storage Operations **************** */
+
+
+//* ********************* Recipe **************** */
+
+// Search a recipe by keyword and ingredients
+// req body = {
+//     "query": String,
+//     "ingreds": List of strings
+// }
+app.post("/recipe/search", async (req, res) => {
+    // const token = process.env.ACCESS_TOKEN;
+    // if (!token) {
+    //     return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    // }
+
+    // prevents undefined
+    const { query = "", ingreds = [] } = req.body;
+
+    // Join the array into a comma-separated list, trimming just in case, because API wants ingreds formated as tomato,cheese
+    const includeIngredients = ingreds
+        .map(i => i.trim())
+        .filter(i => i)       // remove any empty strings
+        .join(",");
+
+    console.log("QUERY:::::::", query)//
+    console.log("INGREDS:::::::", ingreds)//
+
+    // Build URL params with URLSearchParams for safe encoding
+    const params = new URLSearchParams({
+        apiKey: process.env.SPOONACULAR_KEY,
+        addRecipeInformation: "true",
+        number: "10",
+    });
+    if (query) params.append("query", query);
+    if (includeIngredients) params.append("includeIngredients", includeIngredients);
+
+    const endpoint = `https://api.spoonacular.com/recipes/complexSearch?${params}`;
+
     try {
-        console.log("Received request body:", req.body);
-        
-        // Extract user ID from JWT token
-        const token = req.cookies.token;
-        console.log('CREATE - All cookies:', req.cookies);
-        console.log('CREATE - Token received:', token);
-        if (!token) {
-            console.log('CREATE - No token found in cookies');
-            return res.status(401).json({ error: "No token provided" });
-        }
+        const resp = await fetch(endpoint);
+        const data = await resp.json();
+        return res.status(resp.status).json(data);
+    } catch (err) {
+        return res.status(502).json({ error: err.message });
+    }
+});
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        console.log('CREATE - Decoded token:', decoded);
-        const userId = new mongoose.Types.ObjectId(decoded.userId);
-        console.log('CREATE - Extracted userId:', userId);
-        
-        // Only include type-specific fields based on the entry type
-        const entryData = {
-            userId: userId,
-            type: req.body.type,
-            value: req.body.value,
-            date: req.body.date,
-            notes: req.body.notes
-        };
+// Save a recipe
+app.post('/recipe/search/', async (req, res) => {
+    const zip = req.query.zip;
+    // const token = process.env.ACCESS_TOKEN;
+    if (!token) {
+        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    }
 
-        // Add unit field only for types that need it (weight, blood_pressure)
-        if (req.body.type === 'weight' || req.body.type === 'blood_pressure') {
-            entryData.unit = req.body.unit;
-        }
+    const apiUrl =
+        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
 
-        // Add type-specific fields only for the relevant type
-        if (req.body.type === 'blood_pressure') {
-            entryData.systolic = req.body.systolic;
-            entryData.diastolic = req.body.diastolic;
-        } else if (req.body.type === 'meal') {
-            // Only add mealType if it's not empty to avoid enum validation error
-            if (req.body.mealType && req.body.mealType.trim() !== '') {
-                entryData.mealType = req.body.mealType;
+    try {
+        const resp = await fetch(apiUrl + zip, {
+            headers: {
+                "Accept": "application/json",
+                "Authorization": `Bearer ${token}`
             }
-            entryData.calories = req.body.calories;
-            entryData.nutrition = req.body.nutrition;
-        } else if (req.body.type === 'workout') {
-            // Only add workoutType if it's not empty to avoid enum validation error
-            if (req.body.workoutType && req.body.workoutType.trim() !== '') {
-                entryData.workoutType = req.body.workoutType;
+        });
+        const data = await resp.json();
+        console.log(data);//
+
+        return res.status(resp.status).json(data);
+    } catch (err) {
+        return res.status(502).json({ error: err.message });
+    }
+})
+
+// Delete a saved recipe
+app.get('/recipe/search/', async (req, res) => {
+    const zip = req.query.zip;
+    // const token = process.env.ACCESS_TOKEN;
+    if (!token) {
+        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    }
+
+    const apiUrl =
+        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+
+    try {
+        const resp = await fetch(apiUrl + zip, {
+            headers: {
+                "Accept": "application/json",
+                "Authorization": `Bearer ${token}`
             }
-            entryData.duration = req.body.duration;
-            entryData.exercises = req.body.exercises;
-        }
-        
-        console.log("Final entryData:", entryData);
-        const newEntry = await HealthInventory.createEntry(entryData);
-        res.status(201).json(newEntry);
-        console.log("POST request received on health route");
-    } catch (error) {
-        if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({ error: "Invalid token" });
-        }
-        console.error("Error creating health entry:", error);
-        res.status(500).json({ error: "Failed to create health entry" });
-    }
-});
+        });
+        const data = await resp.json();
+        console.log(data);//
 
-// Get all health entries for a user (optionally filtered by type)
-app.get("/health/", requireValidTokenAndUser, async (req, res) => {
+        return res.status(resp.status).json(data);
+    } catch (err) {
+        return res.status(502).json({ error: err.message });
+    }
+})
+
+// Show saved recipes
+app.get('/recipe/search/', async (req, res) => {
+    const zip = req.query.zip;
+    // const token = process.env.ACCESS_TOKEN;
+    if (!token) {
+        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    }
+
+    const apiUrl =
+        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+
     try {
-        // Extract user ID from JWT token
-        const token = req.cookies.token;
-        if (!token) {
-            return res.status(401).json({ error: "No token provided" });
-        }
+        const resp = await fetch(apiUrl + zip, {
+            headers: {
+                "Accept": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        const data = await resp.json();
+        console.log(data);//
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        console.log('FETCH - Decoded token:', decoded);
-        const userId = new mongoose.Types.ObjectId(decoded.userId);
-        console.log('FETCH - Extracted userId:', userId);
-
-        const { type } = req.query;
-        const entries = await HealthInventory.getUserEntries(userId, type);
-        res.json(entries);
-        console.log("GET request received on health route");
-    } catch (error) {
-        if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({ error: "Invalid token" });
-        }
-        console.error("Error fetching health entries:", error);
-        res.status(500).json({ error: "Failed to fetch health entries" });
+        return res.status(resp.status).json(data);
+    } catch (err) {
+        return res.status(502).json({ error: err.message });
     }
-});
-
-// Get a specific health entry
-app.get("/health/entry/:entryId", requireValidTokenAndUser, async (req, res) => {
-    try {
-        // Extract user ID from JWT token
-        const token = req.cookies.token;
-        if (!token) {
-            return res.status(401).json({ error: "No token provided" });
-        }
-
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = new mongoose.Types.ObjectId(decoded.userId);
-
-        const entry = await HealthInventory.getEntryById(req.params.entryId, userId);
-        if (!entry) {
-            return res.status(404).json({ error: "Entry not found" });
-        }
-        res.json(entry);
-    } catch (error) {
-        if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({ error: "Invalid token" });
-        }
-        console.error("Error fetching health entry:", error);
-        res.status(500).json({ error: "Failed to fetch health entry" });
-    }
-});
-
-// Update a health entry
-app.patch("/health/:entryId", requireValidTokenAndUser, async (req, res) => {
-    try {
-        // Extract user ID from JWT token
-        const token = req.cookies.token;
-        if (!token) {
-            return res.status(401).json({ error: "No token provided" });
-        }
-
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = new mongoose.Types.ObjectId(decoded.userId);
-
-        // Clean the update data to avoid enum validation errors
-        const updateData = { ...req.body };
-        
-        // Remove empty enum fields to avoid validation errors
-        if (updateData.mealType === '') {
-            delete updateData.mealType;
-        }
-        if (updateData.workoutType === '') {
-            delete updateData.workoutType;
-        }
-
-        const updatedEntry = await HealthInventory.updateEntry(req.params.entryId, userId, updateData);
-        if (!updatedEntry) {
-            return res.status(404).json({ error: "Entry not found" });
-        }
-        res.json(updatedEntry);
-        console.log("PATCH request received on health route");
-    } catch (error) {
-        if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({ error: "Invalid token" });
-        }
-        console.error("Error updating health entry:", error);
-        res.status(500).json({ error: "Failed to update health entry" });
-    }
-});
-
-// Delete a health entry
-app.delete("/health/:entryId", requireValidTokenAndUser, async (req, res) => {
-    try {
-        // Extract user ID from JWT token
-        const token = req.cookies.token;
-        if (!token) {
-            return res.status(401).json({ error: "No token provided" });
-        }
-
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = new mongoose.Types.ObjectId(decoded.userId);
-
-        const deletedEntry = await HealthInventory.deleteEntry(req.params.entryId, userId);
-        if (!deletedEntry) {
-            return res.status(404).json({ error: "Entry not found" });
-        }
-        res.sendStatus(200);
-        console.log("DELETE request received on health route");
-    } catch (error) {
-        if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({ error: "Invalid token" });
-        }
-        console.error("Error deleting health entry:", error);
-        res.status(500).json({ error: "Failed to delete health entry" });
-    }
-});
-
-//* ********************* External APIs **************** */
-
-// Exercise API routes
-app.get("/api/exercises", requireValidTokenAndUser, async (req, res) => {
-    try {
-        const { muscle, type, difficulty, name } = req.query;
-        let exercises;
-        
-        if (name) {
-            exercises = await ExerciseAPI.searchExercisesByName(name);
-        } else if (muscle) {
-            exercises = await ExerciseAPI.getExercisesByMuscle(muscle, difficulty);
-        } else if (type) {
-            exercises = await ExerciseAPI.getExercisesByType(type, muscle);
-        } else {
-            exercises = await ExerciseAPI.fetchExercises(req.query);
-        }
-        
-        res.json(exercises);
-    } catch (error) {
-        console.error("Error fetching exercises:", error);
-        res.status(500).json({ error: "Failed to fetch exercises" });
-    }
-});
-
-app.get("/api/exercises/all/:muscle", requireValidTokenAndUser, async (req, res) => {
-    try {
-        const exercises = await ExerciseAPI.getAllExercisesForMuscle(req.params.muscle);
-        res.json(exercises);
-    } catch (error) {
-        console.error("Error fetching all exercises:", error);
-        res.status(500).json({ error: "Failed to fetch exercises" });
-    }
-});
-
-// Nutrition API routes
-app.get("/api/nutrition/search", requireValidTokenAndUser, async (req, res) => {
-    try {
-        const { query, number } = req.query;
-        if (!query) {
-            return res.status(400).json({ error: "Query parameter is required" });
-        }
-        const results = await NutritionAPI.searchFood(query, number || 10);
-        res.json(results);
-    } catch (error) {
-        console.error("Error searching nutrition:", error);
-        res.status(500).json({ error: "Failed to search nutrition" });
-    }
-});
-
-app.get("/api/nutrition/info", requireValidTokenAndUser, async (req, res) => {
-    try {
-        const { query } = req.query;
-        if (!query) {
-            return res.status(400).json({ error: "Query parameter is required" });
-        }
-        const nutrition = await NutritionAPI.getNutritionInfo(query);
-        res.json(nutrition);
-    } catch (error) {
-        console.error("Error getting nutrition info:", error);
-        res.status(500).json({ error: "Failed to get nutrition info" });
-    }
-});
-
-app.get("/api/nutrition/food/:id", requireValidTokenAndUser, async (req, res) => {
-    try {
-        const foodInfo = await NutritionAPI.getFoodInformation(req.params.id);
-        res.json(foodInfo);
-    } catch (error) {
-        console.error("Error getting food information:", error);
-        res.status(500).json({ error: "Failed to get food information" });
-    }
-});
+})
 
 //* ********************* Launching the server **************** */
 
