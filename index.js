@@ -21,7 +21,7 @@ const Budget = require("./models/Budget")
 
 app.use(
     cors({
-        origin: ["http://localhost:5173", "http://localhost:5174", "https://localhost:5173", "https://cfa-summer2025-grocerybuddy-www.netlify.app"],
+        origin: ["http://localhost:5173", "http://localhost:5174", "https://localhost:5173", "https://localhost:5174",  "https://cfa-summer2025-grocerybuddy-www.netlify.app"],
         credentials: true,
     })
 );
@@ -96,6 +96,19 @@ app.post("/login", async (req, res) => {
         res.sendStatus(401);
     }
 });
+app.get("/verifyToken", async (req, res) => {
+    console.log("Received request body:", req.body);
+        
+        // Extract user ID from JWT token
+        const token = req.cookies.token;
+        console.log('CREATE - All cookies:', req.cookies);
+        console.log('CREATE - Token received:', token);
+        if (!token) {
+            console.log('CREATE - No token found in cookies');
+            return res.sendStatus(401);
+        }
+        res.sendStatus(200)
+})
 
 app.post("/logout", (req, res) => {
     res.clearCookie("token", {
@@ -561,24 +574,23 @@ app.get('/recipe/details/:id', async (req, res) => {
 const start = async () => {
     try {
         await connectMongoose();
-        // app.listen(port, () => console.log(`Server running on port ${port}...`));
         
-        // if (process.env.NODE_ENV === "production") {
-        //     app.listen(port, () => {console.log("server running on port: " + port)})
-        // } else {
-        //     const httpsOptions = {
-        //         key: fs.readFileSync(path.resolve(__dirname, '../localhost-key.pem')),
-        //         cert: fs.readFileSync(path.resolve(__dirname, '../localhost.pem'))
-        //     };
-        //     https.createServer(httpsOptions, app).listen(port, () => {
-        //         console.log(`Express API server running on https://localhost:${port}`);
-        //     });
-        // }
+        if (process.env.NODE_ENV === "production") {
+            app.listen(port, () => {console.log("server running on port: " + port)})
+        } else {
+            const httpsOptions = {
+                key: fs.readFileSync(path.resolve(__dirname, '../localhost-key.pem')),
+                cert: fs.readFileSync(path.resolve(__dirname, '../localhost.pem'))
+            };
+            https.createServer(httpsOptions, app).listen(port, () => {
+                console.log(`Express API server running on https://localhost:${port}`);
+            });
+        }
         
         // Use HTTP for both development and production
-        app.listen(port, () => {
-            console.log(`Express API server running on http://localhost:${port}`);
-        });
+        // app.listen(port, () => {
+        //     console.log(`Express API server running on http://localhost:${port}`);
+        // });
     }
     catch (err) {
         console.error(err);
