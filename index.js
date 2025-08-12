@@ -15,6 +15,7 @@ const { connectMongoose } = require("./connect");
 const mongoose = require("mongoose");
 const User = require("./models/User");
 const Grocery = require("./models/Grocery");
+const Recipe = require("./models/Recipe")
 const Budget = require("./models/Budget")
 
 app.use(
@@ -297,7 +298,8 @@ app.get("/inventory/", /*requireValidTokenAndUser,*/ async (req, res) => {
 //     "query": String,
 //     "ingreds": List of strings
 // }
-app.post("/recipe/search", async (req, res) => {
+app.post("/recipe/search", async (req, res) => { //again, why is this a post and not a get?
+    //TODO
     // const token = process.env.ACCESS_TOKEN;
     // if (!token) {
     //     return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
@@ -312,8 +314,8 @@ app.post("/recipe/search", async (req, res) => {
         .filter(i => i)       // remove any empty strings
         .join(",");
 
-    console.log("QUERY:::::::", query)//
-    console.log("INGREDS:::::::", ingreds)//
+    console.log("QUERY:", query)//
+    console.log("INGREDS:", ingreds)//
 
     // Build URL params with URLSearchParams for safe encoding
     const params = new URLSearchParams({
@@ -329,6 +331,7 @@ app.post("/recipe/search", async (req, res) => {
     try {
         const resp = await fetch(endpoint);
         const data = await resp.json();
+        // console.log(data);//
         return res.status(resp.status).json(data);
     } catch (err) {
         return res.status(502).json({ error: err.message });
@@ -336,85 +339,61 @@ app.post("/recipe/search", async (req, res) => {
 });
 
 // Save a recipe
-app.post('/recipe/search/', async (req, res) => {
-    const zip = req.query.zip;
+app.post('/recipe/save', async (req, res) => {
+    //TODO
     // const token = process.env.ACCESS_TOKEN;
-    if (!token) {
-        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
-    }
+    // if (!token) {
+    //     return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    // }
 
-    const apiUrl =
-        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+    const recipe = req.body;
+    const results = await Recipe.addRecipe(recipe);
 
-    try {
-        const resp = await fetch(apiUrl + zip, {
-            headers: {
-                "Accept": "application/json",
-                "Authorization": `Bearer ${token}`
-            }
-        });
-        const data = await resp.json();
-        console.log(data);//
+    res.status(200).json(results);
 
-        return res.status(resp.status).json(data);
-    } catch (err) {
-        return res.status(502).json({ error: err.message });
-    }
+    console.log("POST request received on recipe route");
 })
 
-// Delete a saved recipe
-app.get('/recipe/search/', async (req, res) => {
-    const zip = req.query.zip;
+// Delete a saved recipe TODO
+app.delete('/recipe/unsave', async (req, res) => {
+    //TODO
     // const token = process.env.ACCESS_TOKEN;
-    if (!token) {
-        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
-    }
+    // if (!token) {
+    //     return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    // }
 
-    const apiUrl =
-        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+    const recipe = req.body;
+    const results = await Recipe.deleteRecipe(recipe);
 
-    try {
-        const resp = await fetch(apiUrl + zip, {
-            headers: {
-                "Accept": "application/json",
-                "Authorization": `Bearer ${token}`
-            }
-        });
-        const data = await resp.json();
-        console.log(data);//
+    res.status(200).json(results);
 
-        return res.status(resp.status).json(data);
-    } catch (err) {
-        return res.status(502).json({ error: err.message });
-    }
+    console.log("DELETE request received on recipe route");
 })
 
 // Show saved recipes
-app.get('/recipe/search/', async (req, res) => {
-    const zip = req.query.zip;
-    // const token = process.env.ACCESS_TOKEN;
-    if (!token) {
-        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
-    }
+app.get('/recipe/search/:ownerId', async (req, res) => {
+    const results = await Recipe.getRecipes(req.params.ownerId);
+    res.status(200).json(results);
 
-    const apiUrl =
-        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+    console.log("GET request received on recipe route");
+})
 
+// Get details of a recipe
+app.get('/recipe/details/:id', async (req, res) => {
+    const recipeId = req.params.id;
+    const params = new URLSearchParams({
+        apiKey: process.env.SPOONACULAR_KEY,
+        includeNutrition: "true"
+    });
+    const endpoint = `https://api.spoonacular.com/recipes/${recipeId}/information?${params}`;
     try {
-        const resp = await fetch(apiUrl + zip, {
-            headers: {
-                "Accept": "application/json",
-                "Authorization": `Bearer ${token}`
-            }
-        });
+        const resp = await fetch(endpoint);
         const data = await resp.json();
-        console.log(data);//
-
         return res.status(resp.status).json(data);
     } catch (err) {
         return res.status(502).json({ error: err.message });
     }
-})
+});
 
 //* ********************* Launching the server **************** */
 
