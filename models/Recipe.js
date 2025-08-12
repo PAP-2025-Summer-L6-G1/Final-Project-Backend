@@ -23,9 +23,9 @@ class RecipeClass {
             return { _id: -1 }
         }
     }
-    static async get(id) {
+    static async get(recipe) {
         try {
-            const result = await Recipe.findOne({ recipeId: id });
+            const result = await Recipe.findOne({ ownerId: recipe.ownerId, recipeId: recipe.recipeId });
             return result;
         }
         catch (e) {
@@ -36,7 +36,6 @@ class RecipeClass {
     static async getRecipes(userId) { //we dont need a param bc the mediator checks for valid token
         try {
             const results = await Recipe.find({ ownerId: userId }).sort({ category: 1 }).exec();
-            //make results lists of dairy,meat,grain?
             return results;
         }
         catch (e) {
@@ -44,9 +43,9 @@ class RecipeClass {
             return [];
         }
     }
-    static async deleteRecipe(item) {
+    static async deleteRecipe(recipe) {
         try {
-            const result = await Recipe.deleteOne({ _id: item._id });
+            const result = await Recipe.deleteOne({ ownerId: recipe.ownerId, recipeId: recipe.recipeId });
             return result;
         }
         catch (e) {
