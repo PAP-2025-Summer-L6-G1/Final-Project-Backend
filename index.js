@@ -12,13 +12,16 @@ const port = process.env.PORT || 3002;
 
 const bcrypt = require("bcrypt");
 const { connectMongoose } = require("./connect");
+const mongoose = require("mongoose");
 const User = require("./models/User");
 const Grocery = require("./models/Grocery");
+const HealthInventory = require("./models/HealthInventory");
+const Recipe = require("./models/Recipe")
 const Budget = require("./models/Budget")
 
 app.use(
     cors({
-        origin: ["https://localhost:5173", "https://cfa-summer2025-grocerybuddy-www.netlify.app"],
+        origin: ["http://localhost:5173", "http://localhost:5174", "https://localhost:5173", "https://localhost:5174",  "https://cfa-summer2025-grocerybuddy-www.netlify.app"],
         credentials: true,
     })
 );
@@ -41,14 +44,16 @@ app.post("/signup", async (req, res) => {
                 console.log(`New user created with id: ${results._id}`);
 
                 const token = jwt.sign(
-                    { username: newUser.username },
+                    { username: newUser.username, userId: results._id },
                     process.env.JWT_SECRET, //look at later?
                     { expiresIn: "7d" }
                 );
+                console.log('SIGNUP - Generated token:', token);
+                console.log('SIGNUP - Setting cookie with token');
                 res.cookie("token", token, {
                     httpOnly: true,
-                    sameSite: "None",
-                    secure: true,
+                    sameSite: "lax",
+                    secure: false, // Set to false for HTTP localhost development
                 });
                 res.status(201).json({userId: results._id});
             } else {
@@ -78,8 +83,8 @@ app.post("/login", async (req, res) => {
                     );
                     res.cookie("token", token, {
                         httpOnly: true,
-                        sameSite: "None",
-                        secure: true,
+                        sameSite: "lax",
+                        secure: false, // Set to false for HTTP localhost development
                     });
                     res.status(200).json({userId: existingUser._id});
                 } else {
@@ -91,6 +96,19 @@ app.post("/login", async (req, res) => {
         res.sendStatus(401);
     }
 });
+app.get("/verifyToken", async (req, res) => {
+    console.log("Received request body:", req.body);
+        
+        // Extract user ID from JWT token
+        const token = req.cookies.token;
+        console.log('CREATE - All cookies:', req.cookies);
+        console.log('CREATE - Token received:', token);
+        if (!token) {
+            console.log('CREATE - No token found in cookies');
+            return res.sendStatus(401);
+        }
+        res.sendStatus(200)
+})
 
 app.post("/logout", (req, res) => {
     res.clearCookie("token", {
@@ -284,6 +302,166 @@ app.get("/inventory/", /*requireValidTokenAndUser,*/ async (req, res) => {
     console.log(results);
 });
 
+//* ********************* Health Inventory **************** */
+
+// Create a new health entry
+app.post("/health/", requireValidTokenAndUser, async (req, res) => {
+    try {
+        console.log("Received request body:", req.body);
+        
+        // Extract user ID from JWT token
+        const token = req.cookies.token;
+        console.log('CREATE - All cookies:', req.cookies);
+        console.log('CREATE - Token received:', token);
+        if (!token) {
+            console.log('CREATE - No token found in cookies');
+            return res.status(401).json({ error: "No token provided" });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log('CREATE - Decoded token:', decoded);
+        const userId = new mongoose.Types.ObjectId(decoded.userId);
+        console.log('CREATE - Extracted userId:', userId);
+        
+        // Only include type-specific fields based on the entry type
+        const entryData = {
+            userId: userId,
+            type: req.body.type,
+            value: req.body.value,
+            date: req.body.date,
+            notes: req.body.notes
+        };
+
+        // Add unit field only for types that need it (weight, blood_pressure)
+        if (req.body.type === 'weight' || req.body.type === 'blood_pressure') {
+            entryData.unit = req.body.unit;
+        }
+
+        // Add type-specific fields only for the relevant type
+        if (req.body.type === 'blood_pressure') {
+            entryData.systolic = req.body.systolic;
+            entryData.diastolic = req.body.diastolic;
+        } else if (req.body.type === 'meal') {
+            // Only add mealType if it's not empty to avoid enum validation error
+            if (req.body.mealType && req.body.mealType.trim() !== '') {
+                entryData.mealType = req.body.mealType;
+            }
+            entryData.calories = req.body.calories;
+            entryData.nutrition = req.body.nutrition;
+        } else if (req.body.type === 'workout') {
+            // Only add workoutType if it's not empty to avoid enum validation error
+            if (req.body.workoutType && req.body.workoutType.trim() !== '') {
+                entryData.workoutType = req.body.workoutType;
+            }
+            entryData.duration = req.body.duration;
+            entryData.exercises = req.body.exercises;
+        }
+        
+        console.log("Final entryData:", entryData);
+        const newEntry = await HealthInventory.createEntry(entryData);
+        res.status(201).json(newEntry);
+        console.log("POST request received on health route");
+    } catch (error) {
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ error: "Invalid token" });
+        }
+        console.error("Error creating health entry:", error);
+        res.status(500).json({ error: "Failed to create health entry" });
+    }
+});
+
+// Get all health entries for a user (optionally filtered by type)
+app.get("/health/", requireValidTokenAndUser, async (req, res) => {
+    try {
+        // Extract user ID from JWT token
+        const token = req.cookies.token;
+        if (!token) {
+            return res.status(401).json({ error: "No token provided" });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log('FETCH - Decoded token:', decoded);
+        const userId = new mongoose.Types.ObjectId(decoded.userId);
+        console.log('FETCH - Extracted userId:', userId);
+
+        const { type } = req.query;
+        const entries = await HealthInventory.getUserEntries(userId, type);
+        res.json(entries);
+        console.log("GET request received on health route");
+    } catch (error) {
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ error: "Invalid token" });
+        }
+        console.error("Error fetching health entries:", error);
+        res.status(500).json({ error: "Failed to fetch health entries" });
+    }
+});
+
+// Update a health entry
+app.patch("/health/:entryId", requireValidTokenAndUser, async (req, res) => {
+    try {
+        // Extract user ID from JWT token
+        const token = req.cookies.token;
+        if (!token) {
+            return res.status(401).json({ error: "No token provided" });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = new mongoose.Types.ObjectId(decoded.userId);
+
+        // Clean the update data to avoid enum validation errors
+        const updateData = { ...req.body };
+        
+        // Remove empty enum fields to avoid validation errors
+        if (updateData.mealType === '') {
+            delete updateData.mealType;
+        }
+        if (updateData.workoutType === '') {
+            delete updateData.workoutType;
+        }
+
+        const updatedEntry = await HealthInventory.updateEntry(req.params.entryId, userId, updateData);
+        if (!updatedEntry) {
+            return res.status(404).json({ error: "Entry not found" });
+        }
+        res.json(updatedEntry);
+        console.log("PATCH request received on health route");
+    } catch (error) {
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ error: "Invalid token" });
+        }
+        console.error("Error updating health entry:", error);
+        res.status(500).json({ error: "Failed to update health entry" });
+    }
+});
+
+// Delete a health entry
+app.delete("/health/:entryId", requireValidTokenAndUser, async (req, res) => {
+    try {
+        // Extract user ID from JWT token
+        const token = req.cookies.token;
+        if (!token) {
+            return res.status(401).json({ error: "No token provided" });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = new mongoose.Types.ObjectId(decoded.userId);
+
+        const deletedEntry = await HealthInventory.deleteEntry(req.params.entryId, userId);
+        if (!deletedEntry) {
+            return res.status(404).json({ error: "Entry not found" });
+        }
+        res.sendStatus(200);
+        console.log("DELETE request received on health route");
+    } catch (error) {
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ error: "Invalid token" });
+        }
+        console.error("Error deleting health entry:", error);
+        res.status(500).json({ error: "Failed to delete health entry" });
+    }
+});
+
 //* ********************* Storage Operations **************** */
 
 
@@ -294,7 +472,8 @@ app.get("/inventory/", /*requireValidTokenAndUser,*/ async (req, res) => {
 //     "query": String,
 //     "ingreds": List of strings
 // }
-app.post("/recipe/search", async (req, res) => {
+app.post("/recipe/search", async (req, res) => { //again, why is this a post and not a get?
+    //TODO
     // const token = process.env.ACCESS_TOKEN;
     // if (!token) {
     //     return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
@@ -309,8 +488,8 @@ app.post("/recipe/search", async (req, res) => {
         .filter(i => i)       // remove any empty strings
         .join(",");
 
-    console.log("QUERY:::::::", query)//
-    console.log("INGREDS:::::::", ingreds)//
+    console.log("QUERY:", query)//
+    console.log("INGREDS:", ingreds)//
 
     // Build URL params with URLSearchParams for safe encoding
     const params = new URLSearchParams({
@@ -326,6 +505,7 @@ app.post("/recipe/search", async (req, res) => {
     try {
         const resp = await fetch(endpoint);
         const data = await resp.json();
+        // console.log(data);//
         return res.status(resp.status).json(data);
     } catch (err) {
         return res.status(502).json({ error: err.message });
@@ -333,92 +513,67 @@ app.post("/recipe/search", async (req, res) => {
 });
 
 // Save a recipe
-app.post('/recipe/search/', async (req, res) => {
-    const zip = req.query.zip;
+app.post('/recipe/save', async (req, res) => {
+    //TODO
     // const token = process.env.ACCESS_TOKEN;
-    if (!token) {
-        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
-    }
+    // if (!token) {
+    //     return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    // }
 
-    const apiUrl =
-        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+    const recipe = req.body;
+    const results = await Recipe.addRecipe(recipe);
 
-    try {
-        const resp = await fetch(apiUrl + zip, {
-            headers: {
-                "Accept": "application/json",
-                "Authorization": `Bearer ${token}`
-            }
-        });
-        const data = await resp.json();
-        console.log(data);//
+    res.status(200).json(results);
 
-        return res.status(resp.status).json(data);
-    } catch (err) {
-        return res.status(502).json({ error: err.message });
-    }
+    console.log("POST request received on recipe route");
 })
 
-// Delete a saved recipe
-app.get('/recipe/search/', async (req, res) => {
-    const zip = req.query.zip;
+// Delete a saved recipe TODO
+app.delete('/recipe/unsave', async (req, res) => {
+    //TODO
     // const token = process.env.ACCESS_TOKEN;
-    if (!token) {
-        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
-    }
+    // if (!token) {
+    //     return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
+    // }
 
-    const apiUrl =
-        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+    const recipe = req.body;
+    const results = await Recipe.deleteRecipe(recipe);
 
-    try {
-        const resp = await fetch(apiUrl + zip, {
-            headers: {
-                "Accept": "application/json",
-                "Authorization": `Bearer ${token}`
-            }
-        });
-        const data = await resp.json();
-        console.log(data);//
+    res.status(200).json(results);
 
-        return res.status(resp.status).json(data);
-    } catch (err) {
-        return res.status(502).json({ error: err.message });
-    }
+    console.log("DELETE request received on recipe route");
 })
 
 // Show saved recipes
-app.get('/recipe/search/', async (req, res) => {
-    const zip = req.query.zip;
-    // const token = process.env.ACCESS_TOKEN;
-    if (!token) {
-        return res.status(500).json({ error: "No ACCESS_TOKEN env var set." });
-    }
+app.get('/recipe/search/:ownerId', async (req, res) => {
+    const results = await Recipe.getRecipes(req.params.ownerId);
+    res.status(200).json(results);
 
-    const apiUrl =
-        "https://api-ce.kroger.com/v1/locations?filter.zipCode.near=";
+    console.log("GET request received on recipe route");
+})
 
+// Get details of a recipe
+app.get('/recipe/details/:id', async (req, res) => {
+    const recipeId = req.params.id;
+    const params = new URLSearchParams({
+        apiKey: process.env.SPOONACULAR_KEY,
+        includeNutrition: "true"
+    });
+    const endpoint = `https://api.spoonacular.com/recipes/${recipeId}/information?${params}`;
     try {
-        const resp = await fetch(apiUrl + zip, {
-            headers: {
-                "Accept": "application/json",
-                "Authorization": `Bearer ${token}`
-            }
-        });
+        const resp = await fetch(endpoint);
         const data = await resp.json();
-        console.log(data);//
-
         return res.status(resp.status).json(data);
     } catch (err) {
         return res.status(502).json({ error: err.message });
     }
-})
+});
 
 //* ********************* Launching the server **************** */
 
 const start = async () => {
     try {
         await connectMongoose();
-        // app.listen(port, () => console.log(`Server running on port ${port}...`));
         
         if (process.env.NODE_ENV === "production") {
             app.listen(port, () => {console.log("server running on port: " + port)})
@@ -431,6 +586,11 @@ const start = async () => {
                 console.log(`Express API server running on https://localhost:${port}`);
             });
         }
+        
+        // Use HTTP for both development and production
+        // app.listen(port, () => {
+        //     console.log(`Express API server running on http://localhost:${port}`);
+        // });
     }
     catch (err) {
         console.error(err);
