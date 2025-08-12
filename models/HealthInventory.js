@@ -19,7 +19,10 @@ const healthInventorySchema = new Schema({
   },
   unit: {
     type: String,
-    required: true
+    required: function() {
+      // Only require unit for weight and blood_pressure entries
+      return this.type === 'weight' || this.type === 'blood_pressure';
+    }
   },
   date: {
     type: Date,
