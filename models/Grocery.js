@@ -16,7 +16,7 @@ class GroceryClass {
     try {
       //UPSERT: replace item if it exists, otherwise add new
       return await Grocery.findOneAndUpdate(
-        { ownerId: item.ownerId, name: item.name },
+        { ownerId: item.ownerId, name: item.name, storageType: item.storageType},
         { $set: item },
         { new: true, upsert: true }
       );
