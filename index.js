@@ -482,7 +482,7 @@ app.post("/recipe/search", async (req, res) => { //again, why is this a post and
     // prevents undefined
     const { query = "", ingreds = [] } = req.body;
 
-    // Join the array into a comma-separated list, trimming just in case, because API wants ingreds formated as tomato,cheese
+    // Join the array into a comma-separated string, trimming leading/trailing whitespace just in case, because API wants ingreds formated as tomato,cheese
     const includeIngredients = ingreds
         .map(i => i.trim())
         .filter(i => i)       // remove any empty strings
@@ -528,7 +528,7 @@ app.post('/recipe/save', async (req, res) => {
     console.log("POST request received on recipe route");
 })
 
-// Delete a saved recipe TODO
+// Delete a saved recipe
 app.delete('/recipe/unsave', async (req, res) => {
     //TODO
     // const token = process.env.ACCESS_TOKEN;
@@ -544,7 +544,7 @@ app.delete('/recipe/unsave', async (req, res) => {
     console.log("DELETE request received on recipe route");
 })
 
-// Show saved recipes
+// Get ownerId and recipeId of saved recipes from database
 app.get('/recipe/search/:ownerId', async (req, res) => {
     const results = await Recipe.getRecipes(req.params.ownerId);
     res.status(200).json(results);
@@ -552,14 +552,26 @@ app.get('/recipe/search/:ownerId', async (req, res) => {
     console.log("GET request received on recipe route");
 })
 
-// Get details of a recipe
-app.get('/recipe/details/:id', async (req, res) => {
-    const recipeId = req.params.id;
+// Get details of saved recipes from API
+// req body = {
+//     "recipeIds": List of ints
+// }
+app.post('/recipe/saved', async (req, res) => {
+    // prevents undefined
+    const { recipeIds = [] } = req.body;
+
+    // Join the array into a comma-separated string, because API wants ingreds formated as 715538,716429
+    const recipeIdsString = recipeIds
+        .map(i => String(i))
+        .filter(i => i)       // remove any empty strings
+        .join(",");
+
     const params = new URLSearchParams({
         apiKey: process.env.SPOONACULAR_KEY,
+        ids: recipeIdsString,
         includeNutrition: "true"
     });
-    const endpoint = `https://api.spoonacular.com/recipes/${recipeId}/information?${params}`;
+    const endpoint = `https://api.spoonacular.com/recipes/informationBulk?${params}`;
     try {
         const resp = await fetch(endpoint);
         const data = await resp.json();
